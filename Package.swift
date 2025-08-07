@@ -4,7 +4,10 @@ import PackageDescription
 
 let package = Package(
   name: "SwiftAgent",
-  platforms: [.iOS(.v26)],
+  platforms: [
+    .iOS(.v26),
+    .macOS(.v14)
+  ],
   products: [
     .library(
       name: "SwiftAgent",

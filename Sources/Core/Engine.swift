@@ -3,6 +3,7 @@
 import Foundation
 import FoundationModels
 
+@MainActor
 public protocol Engine {
   init(
     tools: [any FoundationModels.Tool],

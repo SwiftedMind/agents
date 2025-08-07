@@ -11,6 +11,64 @@ public final class OpenAIEngine: Engine {
 
   private var tools: [any FoundationModels.Tool]
   private var instructions: String = ""
+  private let httpClient: HTTPClient
+  private let responsesPath: String
+
+  // MARK: - Configuration
+
+  public struct Configuration: Sendable {
+    public var httpClient: HTTPClient
+    public var responsesPath: String
+
+    public init(httpClient: HTTPClient, responsesPath: String = "/v1/responses") {
+      self.httpClient = httpClient
+      self.responsesPath = responsesPath
+    }
+
+    /// Convenience builder for calling OpenAI directly with an API key.
+    /// Users can alternatively point `baseURL` to their own backend and omit the apiKey.
+    public static func openAIDirect(apiKey: String, baseURL: URL = URL(string: "https://api.openai.com")!, responsesPath: String = "/v1/responses") -> Configuration {
+      let encoder = JSONEncoder()
+      let decoder = JSONDecoder()
+      // Keep defaults; OpenAI models define their own coding keys
+
+      let interceptors = HTTPClientInterceptors(
+        prepareRequest: { request in
+          request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        },
+        onUnauthorized: { _, _, _ in
+          // Let the caller decide how to refresh; default is not to retry
+          return false
+        }
+      )
+
+      let config = HTTPClientConfiguration(
+        baseURL: baseURL,
+        defaultHeaders: [:],
+        timeout: 60,
+        jsonEncoder: encoder,
+        jsonDecoder: decoder,
+        interceptors: interceptors
+      )
+
+      return Configuration(httpClient: URLSessionHTTPClient(configuration: config), responsesPath: responsesPath)
+    }
+  }
+
+  /// Default configuration used by the protocol-mandated initializer.
+  /// To customize, use the initializer that accepts a `Configuration`, or `Configuration.openAIDirect(...)`.
+  public static let defaultConfiguration: Configuration = {
+    let baseURL = URL(string: "https://api.openai.com")!
+    let config = HTTPClientConfiguration(
+      baseURL: baseURL,
+      defaultHeaders: [:],
+      timeout: 60,
+      jsonEncoder: JSONEncoder(),
+      jsonDecoder: JSONDecoder(),
+      interceptors: .init()
+    )
+    return Configuration(httpClient: URLSessionHTTPClient(configuration: config))
+  }()
 
   public init(
     tools: [any FoundationModels.Tool],
@@ -18,6 +76,19 @@ public final class OpenAIEngine: Engine {
   ) {
     self.tools = tools
     self.instructions = instructions
+    self.httpClient = Self.defaultConfiguration.httpClient
+    self.responsesPath = Self.defaultConfiguration.responsesPath
+  }
+
+  public init(
+    tools: [any FoundationModels.Tool],
+    instructions: String,
+    configuration: Configuration
+  ) {
+    self.tools = tools
+    self.instructions = instructions
+    self.httpClient = configuration.httpClient
+    self.responsesPath = configuration.responsesPath
   }
 
   public func respond(
@@ -60,8 +131,15 @@ public final class OpenAIEngine: Engine {
 
       try Task.checkCancellation()
 
-      // TODO: Implement some kind of network client
-      let response: Response = try await networkClient.responses(request)
+      // Call provider backend
+      let response: OpenAI.Response = try await httpClient.send(
+        path: responsesPath,
+        method: .post,
+        queryItems: nil,
+        headers: nil,
+        body: request,
+        responseType: OpenAI.Response.self
+      )
 
       for output in response.output {
         switch output {
@@ -87,10 +165,10 @@ public final class OpenAIEngine: Engine {
         }
       }
 
-      // TODO: Implement
+      // TODO: Implement tool call handling and state updates for store
     }
 
-    // TODO: Implement error
+    return generatedTranscript
   }
 
   private func request(transcript: Core.Transcript) -> Request {
