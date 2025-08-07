@@ -1,2 +1,115 @@
-// The Swift Programming Language
-// https://docs.swift.org/swift-book
+// By Dennis Müller
+
+import Core
+import Foundation
+import FoundationModels
+
+public enum Provider {
+  case openAI
+
+  var provider: any Engine.Type {
+    switch self {
+    case .openAI:
+      return OpenAIEngine.self
+    }
+  }
+}
+
+@Observable @MainActor
+public final class SwiftAgent {
+  public var transcript: Core.Transcript
+  private let provider: any Engine
+
+  public init(
+    using provider: Provider,
+    tools: [any Tool] = [],
+    instructions: String
+  ) {
+    self.provider = provider.provider.init(tools: tools, instructions: instructions)
+    transcript = .init()
+  }
+
+  @discardableResult
+  public func respond(
+    to content: String,
+    options: Core.GenerationOptions = Core.GenerationOptions()
+  ) async throws -> Response<String> {
+    let prompt = Core.Transcript.Prompt(content: content, responseFormat: nil)
+    let promptEntry = Core.Transcript.Entry.prompt(prompt)
+    transcript.entries.append(promptEntry)
+
+    let stream = provider.respond(to: prompt, transcript: transcript)
+
+    var responseContent = ""
+    var generatedTranscriptEntities: [Core.Transcript.Entry] = []
+
+    for try await entry in stream {
+      transcript.entries.append(entry)
+      generatedTranscriptEntities.append(entry)
+      if case let .response(response) = entry {
+        for segment in response.segments {
+          if case let .text(textSegment) = segment {
+            responseContent += "\n\n" + textSegment.content
+          }
+        }
+      }
+    }
+
+    return Response<String>(
+      content: responseContent,
+      transcriptEntries: generatedTranscriptEntities
+    )
+  }
+
+  @discardableResult
+  public func respond(
+    options: Core.GenerationOptions = Core.GenerationOptions(),
+    @PromptBuilder prompt: () throws -> Prompt
+  ) -> Response<String> {
+    Response<String>(
+      content: "",
+      transcriptEntries: []
+    )
+  }
+}
+
+public extension SwiftAgent {
+  enum GenerationError: Error, LocalizedError {
+    
+  }
+  
+  struct ToolCallError: Error, LocalizedError {
+    
+    /// The tool that produced the error.
+    public var tool: any FoundationModels.Tool
+    
+    /// The underlying error that was thrown during a tool call.
+    public var underlyingError: any Error
+    
+    /// Creates a tool call error
+    /// 
+    /// - Parameters:
+    ///   - tool: The tool that produced the error.
+    ///   - underlyingError: The underlying error.
+    public init(tool: any Tool, underlyingError: any Error) {
+      self.tool = tool
+      self.underlyingError = underlyingError
+    }
+    
+    /// A string representation of the error description.
+    public var errorDescription: String? {
+      underlyingError.localizedDescription.debugDescription
+    }
+    
+  }
+}
+
+public extension SwiftAgent {
+  struct Response<Content> where Content: Generable {
+    /// The response content.
+    public var content: Content
+
+    /// The list of transcript entries.
+    public var transcriptEntries: [Core.Transcript.Entry]
+  }
+}

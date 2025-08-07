@@ -1,26 +1,33 @@
 // swift-tools-version: 6.2
-// The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
 let package = Package(
-    name: "SwiftAgent",
-    products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
-        .library(
-            name: "SwiftAgent",
-            targets: ["SwiftAgent"]
-        ),
-    ],
-    targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
-        .target(
-            name: "SwiftAgent"
-        ),
-        .testTarget(
-            name: "SwiftAgentTests",
-            dependencies: ["SwiftAgent"]
-        ),
-    ]
+  name: "SwiftAgent",
+  platforms: [.iOS(.v26)],
+  products: [
+    .library(
+      name: "SwiftAgent",
+      targets: ["SwiftAgent"]
+    ),
+  ],
+  dependencies: [
+    .package(url: "https://github.com/SwiftedMind/swift-openai-responses", branch: "main")
+  ],
+  targets: [
+    .target(
+      name: "Core"
+    ),
+    .target(
+      name: "SwiftAgent",
+      dependencies: [
+        "Core",
+        .product(name: "OpenAI", package: "swift-openai-responses"),
+      ]
+    ),
+    .testTarget(
+      name: "SwiftAgentTests",
+      dependencies: ["SwiftAgent"]
+    ),
+  ]
 )
