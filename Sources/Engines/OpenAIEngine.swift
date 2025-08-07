@@ -4,6 +4,7 @@ import Core
 import Foundation
 import FoundationModels
 import OpenAI
+import SwiftAgentNetworking
 
 public final class OpenAIEngine: Engine {
   /// Maps Transcript.Entry.ID to an OpenAI ListItem.
@@ -132,7 +133,7 @@ public final class OpenAIEngine: Engine {
       try Task.checkCancellation()
 
       // Call provider backend
-      let response: OpenAI.Response = try await httpClient.send(
+      let response = try await httpClient.send(
         path: responsesPath,
         method: .post,
         queryItems: nil,
@@ -144,7 +145,7 @@ public final class OpenAIEngine: Engine {
       for output in response.output {
         switch output {
         case let .message(message):
-          let response = Transcript.Response(segments: [.text(Transcript.TextSegment(content: message.text))])
+          let response = Core.Transcript.Response(segments: [.text(Core.Transcript.TextSegment(content: message.text))])
           
           generatedTranscript.entries.append(.response(response))
           continuation.yield(.response(response))
@@ -171,7 +172,7 @@ public final class OpenAIEngine: Engine {
     return generatedTranscript
   }
 
-  private func request(transcript: Core.Transcript) -> Request {
+  private func request(transcript: Core.Transcript) -> OpenAI.Request {
     return Request(
       model: .gpt4_1Mini,
       input: .list(transcript.toListItems(store: store)),

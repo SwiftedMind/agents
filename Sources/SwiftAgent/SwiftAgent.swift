@@ -1,19 +1,9 @@
 // By Dennis Müller
 
 import Core
+import Engines
 import Foundation
 import FoundationModels
-
-public enum Provider {
-  case openAI
-
-  var provider: any Engine.Type {
-    switch self {
-    case .openAI:
-      return OpenAIEngine.self
-    }
-  }
-}
 
 @Observable @MainActor
 public final class SwiftAgent {
@@ -34,8 +24,8 @@ public final class SwiftAgent {
     to content: String,
     options: Core.GenerationOptions = Core.GenerationOptions()
   ) async throws -> Response<String> {
-    let prompt = Core.Transcript.Prompt(content: content, responseFormat: nil)
-    let promptEntry = Core.Transcript.Entry.prompt(prompt)
+    let prompt = Transcript.Prompt(content: content, responseFormat: nil)
+    let promptEntry = Transcript.Entry.prompt(prompt)
     transcript.entries.append(promptEntry)
 
     let stream = provider.respond(to: prompt, transcript: transcript)
@@ -102,14 +92,23 @@ public extension SwiftAgent {
     }
     
   }
-}
-
-public extension SwiftAgent {
+  
   struct Response<Content> where Content: Generable {
     /// The response content.
     public var content: Content
 
     /// The list of transcript entries.
     public var transcriptEntries: [Core.Transcript.Entry]
+  }
+}
+
+// MARK: - Helpers
+
+private extension Provider {
+  var provider: any Engine.Type {
+    switch self {
+    case .openAI:
+      return OpenAIEngine.self
+    }
   }
 }

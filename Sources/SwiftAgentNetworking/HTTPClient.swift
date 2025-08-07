@@ -77,13 +77,13 @@ public enum HTTPError: Error, Sendable, LocalizedError {
     switch self {
     case .invalidURL:
       return "Invalid URL"
-    case .requestFailed(let underlying):
+    case let .requestFailed(underlying):
       return "Request failed: \(underlying.localizedDescription)"
     case .invalidResponse:
       return "Invalid response"
-    case .unacceptableStatus(let code, _):
+    case let .unacceptableStatus(code, _):
       return "Unacceptable status code: \(code)"
-    case .decodingFailed(let underlying, _):
+    case let .decodingFailed(underlying, _):
       return "Failed to decode response: \(underlying.localizedDescription)"
     }
   }
@@ -99,12 +99,12 @@ public final class URLSessionHTTPClient: HTTPClient {
     self.configuration = configuration
 
     if let session {
-      self.urlSession = session
+      urlSession = session
     } else {
       let config = URLSessionConfiguration.default
       config.timeoutIntervalForRequest = configuration.timeout
       config.timeoutIntervalForResource = configuration.timeout
-      self.urlSession = URLSession(configuration: config)
+      urlSession = URLSession(configuration: config)
     }
   }
 
@@ -123,8 +123,12 @@ public final class URLSessionHTTPClient: HTTPClient {
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
     // Apply default headers then custom headers
-    for (key, value) in configuration.defaultHeaders { request.setValue(value, forHTTPHeaderField: key) }
-    if let headers { for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) } }
+    for (key, value) in configuration.defaultHeaders {
+      request.setValue(value, forHTTPHeaderField: key)
+    }
+    if let headers { for (key, value) in headers {
+      request.setValue(value, forHTTPHeaderField: key)
+    } }
 
     if let body {
       request.httpBody = try configuration.jsonEncoder.encode(body)
@@ -160,6 +164,7 @@ public final class URLSessionHTTPClient: HTTPClient {
     guard var components = URLComponents(url: configuration.baseURL, resolvingAgainstBaseURL: false) else {
       throw HTTPError.invalidURL
     }
+
     // Ensure single slash between base and path
     let trimmedBasePath = (components.path as NSString).standardizingPath
     let trimmedPath = ("/" + path).replacingOccurrences(of: "//", with: "/")
@@ -167,6 +172,7 @@ public final class URLSessionHTTPClient: HTTPClient {
     components.queryItems = queryItems
 
     guard let url = components.url else { throw HTTPError.invalidURL }
+
     return url
   }
 
@@ -180,7 +186,6 @@ public final class URLSessionHTTPClient: HTTPClient {
 
   private func decode<T: Decodable>(_ type: T.Type, data: Data, response: URLResponse) throws -> T {
     guard let http = response as? HTTPURLResponse else { throw HTTPError.invalidResponse }
-
     guard (200..<300).contains(http.statusCode) else {
       throw HTTPError.unacceptableStatus(code: http.statusCode, data: data)
     }
@@ -192,5 +197,3 @@ public final class URLSessionHTTPClient: HTTPClient {
     }
   }
 }
-
-
