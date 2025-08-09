@@ -14,13 +14,33 @@ public final class OpenAIEngine: Engine {
 
   // MARK: - Configuration
 
-  public struct Configuration: Sendable {
+  public struct Configuration: Core.EngineConfiguration {
     public var httpClient: HTTPClient
     public var responsesPath: String
 
     public init(httpClient: HTTPClient, responsesPath: String = "/v1/responses") {
       self.httpClient = httpClient
       self.responsesPath = responsesPath
+    }
+
+    /// Default configuration used by the protocol-mandated initializer.
+    /// To customize, use the initializer that accepts a `Configuration`, or `Configuration.openAIDirect(...)`.
+    public internal(set) static var defaultConfiguration: Configuration = {
+      let baseURL = URL(string: "https://api.openai.com")!
+      let config = HTTPClientConfiguration(
+        baseURL: baseURL,
+        defaultHeaders: [:],
+        timeout: 60,
+        jsonEncoder: JSONEncoder(),
+        jsonDecoder: JSONDecoder(),
+        interceptors: .init()
+      )
+      return Configuration(httpClient: URLSessionHTTPClient(configuration: config))
+    }()
+
+    /// Overrides the static default configuration used by convenience providers.
+    public static func setDefaultConfiguration(_ configuration: Configuration) {
+      Self.defaultConfiguration = configuration
     }
 
     /// Convenience builder for calling OpenAI directly with an API key.
@@ -36,7 +56,7 @@ public final class OpenAIEngine: Engine {
         },
         onUnauthorized: { _, _, _ in
           // Let the caller decide how to refresh; default is not to retry
-          return false
+          false
         }
       )
 
@@ -185,7 +205,7 @@ public final class OpenAIEngine: Engine {
             summary: summary,
             status: reasoning.status?.asTranscriptStatus
           )
-          
+
           let entry = Transcript.Entry.reasoning(entryData)
         default:
           print("Warning: Unsupported output received: \(output)")
