@@ -1,9 +1,9 @@
 // By Dennis Müller
 
 import FoundationModels
+import OSLog
 import SwiftAgent
 import SwiftUI
-import OSLog
 
 @main
 struct ExampleApp: App {
@@ -14,15 +14,15 @@ struct ExampleApp: App {
       RootView()
         .task {
           do {
-            let configuration = OpenAIEngine.Configuration.openAIDirect(apiKey: Secret.OpenAI.apiKey)
+            let configuration = OpenAIEngine.Configuration.direct(apiKey: Secret.OpenAI.apiKey)
             OpenAIEngine.Configuration.setDefaultConfiguration(configuration)
             SwiftAgent.setLoggingEnabled(true)
 
             let agent = SwiftAgent(using: .openAI, tools: [GetFavoriteNumbers()])
-            try await agent.respond(to: "Give me my 5 favorite numbers")
-
+            let output = try await agent.respond(to: "Give me my 5 favorite numbers", generating: NumbersOutput.self)
+            print("HERE RESULT: ", output.content)
           } catch {
-            print(error)
+            print("Error \(error)")
           }
         }
     }
@@ -30,6 +30,11 @@ struct ExampleApp: App {
 }
 
 // MARK: - Tools
+
+@Generable
+struct NumbersOutput {
+  var numbers: [Int]
+}
 
 @Generable
 struct GetFavoriteNumbers: SwiftAgentTool {
