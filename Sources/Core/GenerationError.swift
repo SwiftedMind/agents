@@ -5,6 +5,7 @@ import Foundation
 public enum GenerationError: Error, LocalizedError {
   case unexpectedStructuredResponse(UnexpectedStructuredResponseContext)
   case unsupportedToolCalled(UnsupportedToolCalledContext)
+  case unknown
 }
 
 public extension GenerationError {

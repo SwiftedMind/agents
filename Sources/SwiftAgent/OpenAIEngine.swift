@@ -40,12 +40,12 @@ public final class OpenAIEngine: Engine {
 
     /// Overrides the static default configuration used by convenience providers.
     public static func setDefaultConfiguration(_ configuration: Configuration) {
-      Self.defaultConfiguration = configuration
+      defaultConfiguration = configuration
     }
 
     /// Convenience builder for calling OpenAI directly with an API key.
     /// Users can alternatively point `baseURL` to their own backend and omit the apiKey.
-    public static func openAIDirect(apiKey: String, baseURL: URL = URL(string: "https://api.openai.com")!, responsesPath: String = "/v1/responses") -> Configuration {
+    public static func direct(apiKey: String, baseURL: URL = URL(string: "https://api.openai.com")!, responsesPath: String = "/v1/responses") -> Configuration {
       let encoder = JSONEncoder()
       let decoder = JSONDecoder()
       // Keep defaults; OpenAI models define their own coding keys
@@ -144,14 +144,47 @@ public final class OpenAIEngine: Engine {
         switch output {
         case let .message(message):
           SwiftAgent.logger.info("Message output: \(String(describing: message), privacy: .public)")
+          
+          if type == String.self {
+            // Expecting string outputs
+            let response = Core.Transcript.Response(
+              segments: message.content.compactMap(\.asText).map { .text(Transcript.TextSegment(content: $0)) },
+              status: message.status.asTranscriptStatus
+            )
+            
+            generatedTranscript.entries.append(.response(response))
+            continuation.yield(.response(response))
 
-          let response = Core.Transcript.Response(
-            segments: [.text(Core.Transcript.TextSegment(content: message.text))],
-            status: message.status.asTranscriptStatus
-          )
-
-          generatedTranscript.entries.append(.response(response))
-          continuation.yield(.response(response))
+          } else {
+            // Expecting structured output, so only accept one segment
+            guard let content = message.content.first else {
+              // TODO: Proper error in GenerationError ("message content is empty")
+              throw GenerationError.unknown
+            }
+            
+            switch content {
+            case let .text(text, _, _):
+              do {
+                // Try to parse GeneratedContent
+                let generatedContent = try GeneratedContent(json: text)
+                let response = Core.Transcript.Response(
+                  segments: [.structure(Transcript.StructuredSegment(content: generatedContent))],
+                  status: message.status.asTranscriptStatus
+                )
+                
+                generatedTranscript.entries.append(.response(response))
+                continuation.yield(.response(response))
+              } catch {
+                // TODO: Proper error in GenerationError
+                throw GenerationError.unknown
+              }
+            case .refusal:
+              // TODO: Handle properly (how? We're returning a specific type, not a string)
+              throw GenerationError.unknown
+            }
+            
+            
+          }
         case let .functionCall(functionCall):
           SwiftAgent.logger.info("Function call: \(String(describing: functionCall), privacy: .public)")
 
@@ -249,13 +282,12 @@ public final class OpenAIEngine: Engine {
       }
       let format = TextConfig.Format.generationSchema(
         schema: type.generationSchema,
-        description: "",
-        name: "",
+        name: snakeCaseName(for: type),
         strict: false
       )
       return TextConfig(format: format)
     }()
-    
+
     return Request(
       model: .other("gpt-5"),
       input: .list(transcript.asOpenAIListItems()),
@@ -397,5 +429,17 @@ extension Item.Reasoning.Status {
     case .incomplete: return .incomplete
     case .inProgress: return .inProgress
     }
+  }
+}
+
+func snakeCaseName<T>(for type: T.Type) -> String {
+  let name = String(describing: type)
+    .replacingOccurrences(of: ".Type", with: "")
+
+  return name.reduce(into: "") { result, char in
+    if char.isUppercase, !result.isEmpty {
+      result.append("_")
+    }
+    result.append(char.lowercased())
   }
 }
