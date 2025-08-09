@@ -9,10 +9,9 @@
 
 ## Resources
 
-- @docs/swift-concurrency.md - Full documentation of modern Swift Concurrency features and pitfalls
 - @docs/modern-swift.md - Guidelines on modern SwiftUI and how to build things with it
-- @docs/specs/swift-testing.md - An overview of the Swift Testing framework
-- @docs/specs/tests.md - Guidelines on writing unit tests for the SDK
+- @docs/swift-testing.md - An overview of the Swift Testing framework
+- @docs/tests.md - Guidelines on writing unit tests for the SDK
 
 ## Development Commands
 

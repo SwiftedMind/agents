@@ -1,6 +1,1 @@
-# Swift Agent
-
-AgentSession {
-
-}
-
+AGENTS.md

@@ -40,8 +40,11 @@ public final class SwiftAgent {
       generatedTranscriptEntities.append(entry)
       if case let .response(response) = entry {
         for segment in response.segments {
-          if case let .text(textSegment) = segment {
+          switch segment {
+          case .text(let textSegment):
             responseContent += "\n\n" + textSegment.content
+          case .structure(let structuredSegment):
+            // Not supported yet
           }
         }
       }
