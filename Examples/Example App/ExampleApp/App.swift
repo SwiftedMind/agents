@@ -13,7 +13,7 @@ struct ExampleApp: App {
       Text("Hello, World")
         .task {
           do {
-            let configuration = OpenAIEngine.Configuration.openAIDirect(apiKey: "")
+            let configuration = OpenAIEngine.Configuration.openAIDirect(apiKey: Secret.OpenAI.apiKey)
             OpenAIEngine.Configuration.setDefaultConfiguration(configuration)
 
             let agent = SwiftAgent(using: .openAI, tools: [GetFavoriteNumbers()])
