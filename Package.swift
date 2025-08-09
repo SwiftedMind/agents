@@ -25,18 +25,11 @@ let package = Package(
       name: "SwiftAgentNetworking"
     ),
     .target(
-      name: "Engines",
+      name: "SwiftAgent",
       dependencies: [
         "Core",
         "SwiftAgentNetworking",
         .product(name: "OpenAI", package: "swift-openai-responses"),
-      ]
-    ),
-    .target(
-      name: "SwiftAgent",
-      dependencies: [
-        "Core",
-        "Engines",
       ]
     ),
     .testTarget(

@@ -5,9 +5,11 @@ import FoundationModels
 
 @MainActor
 public protocol Engine {
+  associatedtype Configuration: Sendable
   init(
     tools: [any SwiftAgentTool],
-    instructions: String
+    instructions: String,
+    configuration: Configuration
   )
   
   func respond(

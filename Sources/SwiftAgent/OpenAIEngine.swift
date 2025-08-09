@@ -53,31 +53,6 @@ public final class OpenAIEngine: Engine {
     }
   }
 
-  /// Default configuration used by the protocol-mandated initializer.
-  /// To customize, use the initializer that accepts a `Configuration`, or `Configuration.openAIDirect(...)`.
-  public static let defaultConfiguration: Configuration = {
-    let baseURL = URL(string: "https://api.openai.com")!
-    let config = HTTPClientConfiguration(
-      baseURL: baseURL,
-      defaultHeaders: [:],
-      timeout: 60,
-      jsonEncoder: JSONEncoder(),
-      jsonDecoder: JSONDecoder(),
-      interceptors: .init()
-    )
-    return Configuration(httpClient: URLSessionHTTPClient(configuration: config))
-  }()
-
-  public init(
-    tools: [any SwiftAgentTool],
-    instructions: String
-  ) {
-    self.tools = tools
-    self.instructions = instructions
-    httpClient = Self.Configuration.openAIDirect(apiKey: "").httpClient
-    responsesPath = Self.Configuration.openAIDirect(apiKey: "").responsesPath
-  }
-
   public init(
     tools: [any SwiftAgentTool],
     instructions: String,

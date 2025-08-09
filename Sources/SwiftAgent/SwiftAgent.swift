@@ -11,12 +11,15 @@ public final class SwiftAgent {
   private let provider: any Engine
 
   public init(
-    using provider: Provider,
+    using provider: EngineProvider,
     tools: [any SwiftAgentTool] = [],
     instructions: String = ""
   ) {
-    self.provider = provider.provider.init(tools: tools, instructions: instructions)
-    transcript = .init()
+    transcript = Core.Transcript()
+    switch provider {
+    case .openAI(let configuration):
+      self.provider = OpenAIEngine(tools: tools, instructions: instructions, configuration: configuration)
+    }
   }
 
   @discardableResult
@@ -70,16 +73,5 @@ public extension SwiftAgent {
 
     /// The list of transcript entries.
     public var transcriptEntries: [Core.Transcript.Entry]
-  }
-}
-
-// MARK: - Helpers
-
-private extension Provider {
-  var provider: any Engine.Type {
-    switch self {
-    case .openAI:
-      return OpenAIEngine.self
-    }
   }
 }
