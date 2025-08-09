@@ -12,10 +12,11 @@ public protocol Engine {
     configuration: Configuration
   )
 
-  func respond(
+  func respond<Content>(
     to prompt: Core.Transcript.Prompt,
-    transcript: Core.Transcript
-  ) -> AsyncThrowingStream<Core.Transcript.Entry, any Error>
+    generating type: Content.Type,
+    including transcript: Core.Transcript
+  ) -> AsyncThrowingStream<Core.Transcript.Entry, any Error> where Content: Generable
 }
 
 /// A configuration type for an Engine.

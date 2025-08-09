@@ -84,16 +84,17 @@ public final class OpenAIEngine: Engine {
     responsesPath = configuration.responsesPath
   }
 
-  public func respond(
+  public func respond<Content>(
     to prompt: Core.Transcript.Prompt,
-    transcript: Core.Transcript
-  ) -> AsyncThrowingStream<Core.Transcript.Entry, any Error> {
+    generating type: Content.Type,
+    including transcript: Core.Transcript
+  ) -> AsyncThrowingStream<Core.Transcript.Entry, any Error> where Content: Generable {
     print("RESPOND. Transcript: \(transcript)")
     let setup = AsyncThrowingStream<Core.Transcript.Entry, any Error>.makeStream()
 
     let task = Task<Void, Never> {
       do {
-        try await run(transcript: transcript, continuation: setup.continuation)
+        try await run(transcript: transcript, generating: type, continuation: setup.continuation)
       } catch {
         setup.continuation.finish(throwing: error)
       }
@@ -108,10 +109,11 @@ public final class OpenAIEngine: Engine {
     return setup.stream
   }
 
-  private func run(
+  private func run<Content>(
     transcript: Core.Transcript,
+    generating type: Content.Type,
     continuation: AsyncThrowingStream<Core.Transcript.Entry, any Error>.Continuation
-  ) async throws {
+  ) async throws where Content: Generable {
     var generatedTranscript = Core.Transcript()
     let allowedSteps = 10
     var currentStep = 0
@@ -120,7 +122,8 @@ public final class OpenAIEngine: Engine {
       currentStep += 1
 
       let request = request(
-        transcript: Core.Transcript(entries: transcript.entries + generatedTranscript.entries)
+        including: Core.Transcript(entries: transcript.entries + generatedTranscript.entries),
+        generating: type
       )
 
       try Task.checkCancellation()
@@ -237,7 +240,23 @@ public final class OpenAIEngine: Engine {
     return try await tool.call(arguments: arguments)
   }
 
-  private func request(transcript: Core.Transcript) -> OpenAI.Request {
+  private func request<Content>(
+    including transcript: Core.Transcript,
+    generating type: Content.Type,
+  ) -> OpenAI.Request where Content: Generable {
+    let textConfig: TextConfig? = {
+      if type == String.self {
+        return nil
+      }
+      let format = TextConfig.Format.generationSchema(
+        schema: type.generationSchema,
+        description: "",
+        name: "",
+        strict: false
+      )
+      return TextConfig(format: format)
+    }()
+    
     return Request(
       model: .other("gpt-5"),
       input: .list(transcript.asOpenAIListItems()),
@@ -245,6 +264,7 @@ public final class OpenAIEngine: Engine {
       safetyIdentifier: "",
       store: true,
 //      temperature: 0.0, // Not supported by gpt-5
+      text: textConfig,
       tools: tools.map { .function(name: $0.name, description: $0.description, parameters: $0.parameters) }
     )
   }

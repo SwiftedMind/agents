@@ -5,6 +5,9 @@
       location = "group:Examples/README.md">
    </FileRef>
    <FileRef
+      location = "container:../swift-openai-responses">
+   </FileRef>
+   <FileRef
       location = "group:">
    </FileRef>
    <FileRef
