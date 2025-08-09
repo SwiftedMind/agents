@@ -30,6 +30,16 @@ xcodebuild__build_sim_name_ws({
 })
 ```
 
+#### Build Example App
+
+```
+xcodebuild__build_sim_name_ws({
+  workspacePath: "/Users/swiftedmind/Code/SwiftAgent/SwiftAgent.xcworkspace",
+  scheme: "ExampleApp",
+  simulatorName: "iPhone 16"
+})
+```
+
 #### Run Tests
 
 ```
