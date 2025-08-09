@@ -141,6 +141,9 @@ public final class URLSessionHTTPClient: HTTPClient {
 
     // Perform request, with one optional retry on 401
     let (data, response) = try await perform(request: request)
+    
+    print("QQ: \(String(data: data, encoding: .utf8))")
+    
     if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401,
        let onUnauthorized = configuration.interceptors.onUnauthorized {
       let shouldRetry = await onUnauthorized(httpResponse, data, request)

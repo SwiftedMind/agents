@@ -14,6 +14,7 @@ public struct Transcript: Sendable, Equatable {
 public extension Transcript {
   enum Entry: Sendable, Identifiable, Equatable {
     case prompt(Prompt)
+    case reasoning(Reasoning)
     case toolCalls(ToolCalls)
     case toolOutput(ToolOutput)
     case response(Response)
@@ -22,6 +23,8 @@ public extension Transcript {
       switch self {
       case let .prompt(prompt):
         return prompt.id
+      case let .reasoning(reasoning):
+        return reasoning.id
       case let .toolCalls(toolCalls):
         return toolCalls.id
       case let .toolOutput(toolOutput):
@@ -73,6 +76,26 @@ public extension Transcript {
     }
   }
 
+  struct Reasoning: Sendable, Identifiable, Equatable {
+    public var id: String
+    public var summary: [String]
+    public var status: Status?
+    
+    public init(id: String = UUID().uuidString, summary: [String], status: Status? = nil) {
+      self.id = id
+      self.summary = summary
+      self.status = status
+    }
+  }
+  
+  enum Status: Sendable, Identifiable, Equatable {
+    case completed
+    case incomplete
+    case inProgress
+    
+    public var id: Self { self }
+  }
+
   struct ToolCalls: Sendable, Identifiable, Equatable {
     public var id: String
 
@@ -86,33 +109,48 @@ public extension Transcript {
 
   struct ToolCall: Sendable, Identifiable, Equatable {
     public var id: String
-
+    public var callId: String
     public var toolName: String
-
     public var arguments: GeneratedContent
+    public var status: Status
 
-    public init(id: String, toolName: String, arguments: GeneratedContent) {
+    public init(id: String = UUID().uuidString, callId: String, toolName: String, arguments: GeneratedContent, status: Status) {
       self.id = id
+      self.callId = callId
       self.toolName = toolName
       self.arguments = arguments
+      self.status = status
     }
   }
 
   struct ToolOutput: Sendable, Identifiable, Equatable {
     public var id: String
-
+    public var callId: String
     public var toolName: String
-
-    public var segments: [Segment]
+    public var segment: Segment
 
     public init(
       id: String = UUID().uuidString,
+      callId: String,
       toolName: String,
-      segments: [Segment]
+      segment: Segment
     ) {
       self.id = id
+      self.callId = callId
       self.toolName = toolName
-      self.segments = segments
+      self.segment = segment
+    }
+
+    public static func generatedContent(
+      _ generatedContent: some ConvertibleToGeneratedContent,
+      callId: String,
+      toolName: String,
+    ) -> Self {
+      ToolOutput(
+        callId: callId,
+        toolName: toolName,
+        segment: .structure(Transcript.StructuredSegment(content: generatedContent))
+      )
     }
   }
 
@@ -121,9 +159,12 @@ public extension Transcript {
 
     public var segments: [Segment]
 
-    public init(id: String = UUID().uuidString, segments: [Segment]) {
+    public var status: Status
+
+    public init(id: String = UUID().uuidString, segments: [Segment], status: Status) {
       self.id = id
       self.segments = segments
+      self.status = status
     }
   }
 
@@ -158,6 +199,11 @@ public extension Transcript {
     public init(id: String = UUID().uuidString, content: GeneratedContent) {
       self.id = id
       self.content = content
+    }
+
+    public init(id: String = UUID().uuidString, content: some ConvertibleToGeneratedContent) {
+      self.id = id
+      self.content = content.generatedContent
     }
   }
 }

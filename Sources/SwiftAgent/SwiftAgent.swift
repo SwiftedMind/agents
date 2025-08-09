@@ -12,8 +12,8 @@ public final class SwiftAgent {
 
   public init(
     using provider: Provider,
-    tools: [any Tool] = [],
-    instructions: String
+    tools: [any SwiftAgentTool] = [],
+    instructions: String = ""
   ) {
     self.provider = provider.provider.init(tools: tools, instructions: instructions)
     transcript = .init()
@@ -63,36 +63,7 @@ public final class SwiftAgent {
   }
 }
 
-public extension SwiftAgent {
-  enum GenerationError: Error, LocalizedError {
-    
-  }
-  
-  struct ToolCallError: Error, LocalizedError {
-    
-    /// The tool that produced the error.
-    public var tool: any FoundationModels.Tool
-    
-    /// The underlying error that was thrown during a tool call.
-    public var underlyingError: any Error
-    
-    /// Creates a tool call error
-    /// 
-    /// - Parameters:
-    ///   - tool: The tool that produced the error.
-    ///   - underlyingError: The underlying error.
-    public init(tool: any Tool, underlyingError: any Error) {
-      self.tool = tool
-      self.underlyingError = underlyingError
-    }
-    
-    /// A string representation of the error description.
-    public var errorDescription: String? {
-      underlyingError.localizedDescription.debugDescription
-    }
-    
-  }
-  
+public extension SwiftAgent {  
   struct Response<Content> where Content: Generable {
     /// The response content.
     public var content: Content
