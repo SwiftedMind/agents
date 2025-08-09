@@ -3,6 +3,7 @@
 import FoundationModels
 import SwiftAgent
 import SwiftUI
+import OSLog
 
 @main
 struct ExampleApp: App {
@@ -15,6 +16,7 @@ struct ExampleApp: App {
           do {
             let configuration = OpenAIEngine.Configuration.openAIDirect(apiKey: Secret.OpenAI.apiKey)
             OpenAIEngine.Configuration.setDefaultConfiguration(configuration)
+            SwiftAgent.setLoggingEnabled(true)
 
             let agent = SwiftAgent(using: .openAI, tools: [GetFavoriteNumbers()])
             try await agent.respond(to: "Give me my 5 favorite numbers")

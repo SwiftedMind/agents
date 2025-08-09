@@ -89,7 +89,7 @@ public final class OpenAIEngine: Engine {
     generating type: Content.Type,
     including transcript: Core.Transcript
   ) -> AsyncThrowingStream<Core.Transcript.Entry, any Error> where Content: Generable {
-    print("RESPOND. Transcript: \(transcript)")
+    SwiftAgent.logger.debug("Respond called. Transcript: \(String(describing: transcript), privacy: .public)")
     let setup = AsyncThrowingStream<Core.Transcript.Entry, any Error>.makeStream()
 
     let task = Task<Void, Never> {
@@ -139,11 +139,11 @@ public final class OpenAIEngine: Engine {
       )
 
       for output in response.output {
-        print("Step \(currentStep): Output: \(output), generated transcript: \(generatedTranscript)")
+        SwiftAgent.logger.debug("Step \(currentStep, privacy: .public): Output: \(String(describing: output), privacy: .public), generated transcript: \(String(describing: generatedTranscript), privacy: .public)")
 
         switch output {
         case let .message(message):
-          print("Message: \(message)")
+          SwiftAgent.logger.info("Message output: \(String(describing: message), privacy: .public)")
 
           let response = Core.Transcript.Response(
             segments: [.text(Core.Transcript.TextSegment(content: message.text))],
@@ -153,7 +153,7 @@ public final class OpenAIEngine: Engine {
           generatedTranscript.entries.append(.response(response))
           continuation.yield(.response(response))
         case let .functionCall(functionCall):
-          print("Function Call: \(functionCall)")
+          SwiftAgent.logger.info("Function call: \(String(describing: functionCall), privacy: .public)")
 
           // Parse the arguments
           let generatedContent = try GeneratedContent(json: functionCall.arguments)
@@ -174,7 +174,7 @@ public final class OpenAIEngine: Engine {
               // Call the tool and return its output
               let output = try await callTool(tool, with: generatedContent)
 
-              print("Output: \(output.generatedContent.jsonString)")
+              SwiftAgent.logger.debug("Tool output: \(output.generatedContent.jsonString, privacy: .public)")
 
               // Prepare the output transcript entry
               let toolOutputEntry = Core.Transcript.ToolOutput.generatedContent(
@@ -195,7 +195,7 @@ public final class OpenAIEngine: Engine {
             continuation.finish(throwing: GenerationError.unsupportedToolCalled(errorContext))
           }
         case let .reasoning(reasoning):
-          print("RECEIVED REASONING: \(reasoning)")
+          SwiftAgent.logger.notice("Received reasoning: \(String(describing: reasoning), privacy: .public)")
 
           let summary = reasoning.summary.map { summary in
             switch summary {
@@ -211,8 +211,7 @@ public final class OpenAIEngine: Engine {
 
           let entry = Transcript.Entry.reasoning(entryData)
         default:
-          print("Warning: Unsupported output received: \(output)")
-//          AppLogger.assistant.warning("Unsupported output received: \(output.jsonString())")
+          SwiftAgent.logger.warning("Unsupported output received: \(String(describing: output), privacy: .public)")
         }
 
         let outputFunctionCalls = response.output.compactMap { output -> Item.FunctionCall? in
@@ -222,7 +221,7 @@ public final class OpenAIEngine: Engine {
         }
 
         if outputFunctionCalls.isEmpty {
-          print("ENDED")
+          SwiftAgent.logger.notice("Response stream ended after step \(currentStep, privacy: .public)")
           continuation.finish()
           return
         }
