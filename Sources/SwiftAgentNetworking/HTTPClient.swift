@@ -81,10 +81,18 @@ public enum HTTPError: Error, Sendable, LocalizedError {
       return "Request failed: \(underlying.localizedDescription)"
     case .invalidResponse:
       return "Invalid response"
-    case let .unacceptableStatus(code, _):
-      return "Unacceptable status code: \(code)"
-    case let .decodingFailed(underlying, _):
-      return "Failed to decode response: \(underlying.localizedDescription)"
+    case let .unacceptableStatus(code, data):
+      if let data, let msg = HTTPErrorMessageExtractor.extract(from: data) {
+        return "HTTP \(code): \(msg)"
+      } else {
+        return "Unacceptable status code: \(code)"
+      }
+    case let .decodingFailed(underlying, data):
+      if let data, let body = HTTPErrorMessageExtractor.string(from: data) {
+        return "Failed to decode response: \(underlying.localizedDescription). Body: \(body)"
+      } else {
+        return "Failed to decode response: \(underlying.localizedDescription)"
+      }
     }
   }
 }
@@ -141,7 +149,7 @@ public final class URLSessionHTTPClient: HTTPClient {
 
     // Perform request, with one optional retry on 401
     let (data, response) = try await perform(request: request)
-    
+
     if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401,
        let onUnauthorized = configuration.interceptors.onUnauthorized {
       let shouldRetry = await onUnauthorized(httpResponse, data, request)
@@ -198,3 +206,5 @@ public final class URLSessionHTTPClient: HTTPClient {
     }
   }
 }
+
+ 

@@ -115,6 +115,8 @@ public final class OpenAIProvider: Provider {
       do {
         try await run(transcript: transcript, generating: type, using: model, options: options, continuation: setup.continuation)
       } catch {
+        // Surface a clear, user-friendly message (decoded in HTTP layer when possible)
+        Logger.main.error("OpenAI request failed: \(error.localizedDescription, privacy: .public)")
         setup.continuation.finish(throwing: error)
       }
 
