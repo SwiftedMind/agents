@@ -19,7 +19,8 @@ public protocol Provider {
     to prompt: Core.Transcript<Metadata>.Prompt,
     generating type: Content.Type,
     using model: Model,
-    including transcript: Core.Transcript<Metadata>
+    including transcript: Core.Transcript<Metadata>,
+    options: Core.GenerationOptions
   ) -> AsyncThrowingStream<Core.Transcript<Metadata>.Entry, any Error> where Content: Generable
 }
 
