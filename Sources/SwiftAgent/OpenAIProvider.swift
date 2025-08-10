@@ -10,6 +10,7 @@ import SwiftAgentNetworking
 public final class OpenAIProvider: Provider {
   public typealias Model = OpenAI.Model
   public typealias Transcript = Core.Transcript<Metadata>
+  public typealias GenerationOptions = Core.GenerationOptions
 
   private var tools: [any AgentTool]
   private var instructions: String = ""
@@ -42,7 +43,7 @@ public final class OpenAIProvider: Provider {
     }
 
     /// Default configuration used by the protocol-mandated initializer.
-    /// To customize, use the initializer that accepts a `Configuration`, or `Configuration.openAIDirect(...)`.
+    /// To customize, use the initializer that accepts a `Configuration`, or `Configuration.direct(...)`.
     public static var `default`: Configuration = {
       let baseURL = URL(string: "https://api.openai.com")!
       let config = HTTPClientConfiguration(
@@ -58,7 +59,11 @@ public final class OpenAIProvider: Provider {
 
     /// Convenience builder for calling OpenAI directly with an API key.
     /// Users can alternatively point `baseURL` to their own backend and omit the apiKey.
-    public static func direct(apiKey: String, baseURL: URL = URL(string: "https://api.openai.com")!, responsesPath: String = "/v1/responses") -> Configuration {
+    public static func direct(
+      apiKey: String,
+      baseURL: URL = URL(string: "https://api.openai.com")!,
+      responsesPath: String = "/v1/responses"
+    ) -> Configuration {
       let encoder = JSONEncoder()
       let decoder = JSONDecoder()
       // Keep defaults; OpenAI models define their own coding keys
@@ -101,13 +106,14 @@ public final class OpenAIProvider: Provider {
     to prompt: Transcript.Prompt,
     generating type: Content.Type,
     using model: Model = .default,
-    including transcript: Transcript
+    including transcript: Transcript,
+    options: GenerationOptions
   ) -> AsyncThrowingStream<Transcript.Entry, any Error> where Content: Generable {
     let setup = AsyncThrowingStream<Transcript.Entry, any Error>.makeStream()
 
     let task = Task<Void, Never> {
       do {
-        try await run(transcript: transcript, generating: type, using: model, continuation: setup.continuation)
+        try await run(transcript: transcript, generating: type, using: model, options: options, continuation: setup.continuation)
       } catch {
         setup.continuation.finish(throwing: error)
       }
@@ -126,6 +132,7 @@ public final class OpenAIProvider: Provider {
     transcript: Transcript,
     generating type: Content.Type,
     using model: Model = .default,
+    options: GenerationOptions,
     continuation: AsyncThrowingStream<Transcript.Entry, any Error>.Continuation
   ) async throws where Content: Generable {
     var generatedTranscript = Transcript()
@@ -138,7 +145,8 @@ public final class OpenAIProvider: Provider {
       let request = request(
         including: Transcript(entries: transcript.entries + generatedTranscript.entries),
         generating: type,
-        using: model
+        using: model,
+        options: options
       )
 
       try Task.checkCancellation()
@@ -349,6 +357,7 @@ public final class OpenAIProvider: Provider {
     including transcript: Transcript,
     generating type: Content.Type,
     using model: Model,
+    options: GenerationOptions
   ) -> OpenAI.Request where Content: Generable {
     let textConfig: TextConfig? = {
       if type == String.self {
@@ -367,9 +376,10 @@ public final class OpenAIProvider: Provider {
       input: .list(transcriptToListItems(transcript)),
       include: [.encryptedReasoning],
       instructions: instructions,
+      maxOutputTokens: options.maximumResponseTokens,
       safetyIdentifier: "",
       store: false,
-      temperature: model.isReasoning ? nil : 0.0,
+      temperature: model.isReasoning ? nil : options.temperature,
       text: textConfig,
       tools: tools.map { .function(name: $0.name, description: $0.description, parameters: $0.parameters) }
     )

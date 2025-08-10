@@ -32,7 +32,7 @@ public final class Agent<P: Provider> {
     let promptEntry = Transcript.Entry.prompt(prompt)
     transcript.entries.append(promptEntry)
 
-    let stream = provider.respond(to: prompt, generating: String.self, using: model, including: transcript)
+    let stream = provider.respond(to: prompt, generating: String.self, using: model, including: transcript, options: options)
     var responseContent = ""
     var addedEntities: [Transcript.Entry] = []
 
@@ -67,7 +67,7 @@ public final class Agent<P: Provider> {
     let promptEntry = Transcript.Entry.prompt(prompt)
     transcript.entries.append(promptEntry)
 
-    let stream = provider.respond(to: prompt, generating: type, using: model, including: transcript)
+    let stream = provider.respond(to: prompt, generating: type, using: model, including: transcript, options: options)
     var addedEntities: [Transcript.Entry] = []
 
     for try await entry in stream {
@@ -77,7 +77,7 @@ public final class Agent<P: Provider> {
       if case let .response(response) = entry {
         for segment in response.segments {
           switch segment {
-          case let .text(textSegment):
+          case .text:
             // Not applicable here
             break
           case let .structure(structuredSegment):
