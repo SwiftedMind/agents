@@ -1,0 +1,17 @@
+// By Dennis Müller
+
+import Foundation
+import OSLog
+
+public enum AgentConfiguration {
+  /// Enables or disables logging for the SDK.
+  /// - Parameter enabled: Pass `true` to enable logging, `false` to disable.
+  @MainActor public static func setLoggingEnabled(_ enabled: Bool) {
+    if enabled {
+      // Use a stable subsystem; avoid relying on host app bundle identifier.
+      Logger.main = Logger(subsystem: "SwiftAgent", category: "SDK")
+    } else {
+      Logger.main = Logger(OSLog.disabled)
+    }
+  }
+}

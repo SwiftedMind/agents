@@ -20,6 +20,6 @@
 - Accessing the logger happens through `SwiftAgent`
 
   ```swift
-  SwiftAgent.logger // Logger instance.
+  Logger.main // Logger instance.
   ```
 - The logger is available to the SDK, but not to the outside

@@ -5,34 +5,36 @@ import Foundation
 import FoundationModels
 
 @Observable @MainActor
-public final class SwiftAgent {
-  public var transcript: Core.Transcript
-  private let provider: any Engine
+public final class Agent<P: Provider> {
+  public typealias Transcript = Core.Transcript<P.Metadata>
+  public typealias GenerationOptions = Core.GenerationOptions
+  public typealias Response<Content: Generable> = AgentResponse<P, Content>
+
+  public var transcript: Transcript
+  private let provider: P
 
   public init(
-    using provider: EngineProvider,
-    tools: [any SwiftAgentTool] = [],
-    instructions: String = ""
+    tools: [any AgentTool] = [],
+    instructions: String = "",
+    configuration: P.Configuration = .default
   ) {
-    transcript = Core.Transcript()
-    switch provider {
-    case let .openAI(configuration):
-      self.provider = OpenAIEngine(tools: tools, instructions: instructions, configuration: configuration)
-    }
+    transcript = Transcript()
+    provider = P(tools: tools, instructions: instructions, configuration: configuration)
   }
 
   @discardableResult
   public func respond(
     to content: String,
-    options: Core.GenerationOptions = Core.GenerationOptions()
+    using model: P.Model = .default,
+    options: GenerationOptions = GenerationOptions()
   ) async throws -> Response<String> {
     let prompt = Transcript.Prompt(content: content, responseFormat: nil)
     let promptEntry = Transcript.Entry.prompt(prompt)
     transcript.entries.append(promptEntry)
 
-    let stream = provider.respond(to: prompt, generating: String.self, including: transcript)
+    let stream = provider.respond(to: prompt, generating: String.self, using: model, including: transcript)
     var responseContent = ""
-    var addedEntities: [Core.Transcript.Entry] = []
+    var addedEntities: [Transcript.Entry] = []
 
     for try await entry in stream {
       transcript.entries.append(entry)
@@ -51,24 +53,22 @@ public final class SwiftAgent {
       }
     }
 
-    return Response<String>(
-      content: responseContent,
-      addedEntries: addedEntities
-    )
+    return AgentResponse<P, String>(content: responseContent, addedEntries: addedEntities)
   }
 
   @discardableResult
   public func respond<Content>(
     to content: String,
     generating type: Content.Type = Content.self,
-    options: Core.GenerationOptions = Core.GenerationOptions()
+    using model: P.Model = .default,
+    options: GenerationOptions = GenerationOptions()
   ) async throws -> Response<Content> where Content: Generable {
     let prompt = Transcript.Prompt(content: content, responseFormat: nil)
     let promptEntry = Transcript.Entry.prompt(prompt)
     transcript.entries.append(promptEntry)
 
-    let stream = provider.respond(to: prompt, generating: type, including: transcript)
-    var addedEntities: [Core.Transcript.Entry] = []
+    let stream = provider.respond(to: prompt, generating: type, using: model, including: transcript)
+    var addedEntities: [Transcript.Entry] = []
 
     for try await entry in stream {
       transcript.entries.append(entry)
@@ -83,7 +83,7 @@ public final class SwiftAgent {
           case let .structure(structuredSegment):
             // We can return here since a structured response can only happen once
             // TODO: Handle errors here in some way
-            return try Response<Content>(
+            return try AgentResponse<P, Content>(
               content: Content(structuredSegment.content),
               addedEntries: addedEntities
             )
@@ -97,12 +97,10 @@ public final class SwiftAgent {
   }
 }
 
-public extension SwiftAgent {
-  struct Response<Content> where Content: Generable {
-    /// The response content.
-    public var content: Content
+public struct AgentResponse<P: Provider, Content> where Content: Generable {
+  /// The response content.
+  public var content: Content
 
-    /// The transcript entries that the prompt produced.
-    public var addedEntries: [Core.Transcript.Entry]
-  }
+  /// The transcript entries that the prompt produced.
+  public var addedEntries: [Agent<P>.Transcript.Entry]
 }

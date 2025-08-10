@@ -14,11 +14,11 @@ struct ExampleApp: App {
       RootView()
         .task {
           do {
-            let configuration = OpenAIEngine.Configuration.direct(apiKey: Secret.OpenAI.apiKey)
-            OpenAIEngine.Configuration.setDefaultConfiguration(configuration)
-            SwiftAgent.setLoggingEnabled(true)
+            let configuration = OpenAIProvider.Configuration.direct(apiKey: Secret.OpenAI.apiKey)
+            OpenAIProvider.Configuration.setDefaultConfiguration(configuration)
+            AgentConfiguration.setLoggingEnabled(true)
 
-            let agent = SwiftAgent(using: .openAI, tools: [GetFavoriteNumbers()])
+            let agent = Agent<OpenAIProvider>(tools: [GetFavoriteNumbers()])
             let output = try await agent.respond(to: "Give me my 5 favorite numbers", generating: NumbersOutput.self)
             print("HERE RESULT: ", output.content)
           } catch {
@@ -37,7 +37,7 @@ struct NumbersOutput {
 }
 
 @Generable
-struct GetFavoriteNumbers: SwiftAgentTool {
+struct GetFavoriteNumbers: AgentTool {
   let name = "get_favorite_numbers"
   let description = "Fetches the user's favorite numbers"
 
