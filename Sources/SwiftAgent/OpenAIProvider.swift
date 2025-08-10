@@ -363,11 +363,13 @@ public final class OpenAIProvider: Provider {
       if type == String.self {
         return nil
       }
+      
       let format = TextConfig.Format.generationSchema(
         schema: type.generationSchema,
         name: snakeCaseName(for: type),
         strict: false
       )
+      
       return TextConfig(format: format)
     }()
 
