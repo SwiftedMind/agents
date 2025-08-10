@@ -19,7 +19,11 @@ struct ExampleApp: App {
             AgentConfiguration.setLoggingEnabled(true)
 
             let agent = Agent<OpenAIProvider>(tools: [GetFavoriteNumbers()])
-            let output = try await agent.respond(to: "Give me my 5 favorite numbers", generating: NumbersOutput.self)
+            let output = try await agent.respond(
+              to: "Give me my 5 favorite numbers",
+              generating: NumbersOutput.self,
+              using: .gpt5
+            )
             print("HERE RESULT: ", output.content)
           } catch {
             print("Error \(error)")

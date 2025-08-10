@@ -374,7 +374,7 @@ public final class OpenAIProvider: Provider {
     return Request(
       model: model,
       input: .list(transcriptToListItems(transcript)),
-      include: [.encryptedReasoning],
+      include: model.isReasoning ? [.encryptedReasoning] : nil,
       instructions: instructions,
       maxOutputTokens: options.maximumResponseTokens,
       safetyIdentifier: "",
