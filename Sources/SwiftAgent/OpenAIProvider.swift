@@ -537,7 +537,6 @@ extension OpenAI.Model: ProviderModel {
     case .gpt5,
          .gpt5_mini,
          .gpt5_nano,
-         .gpt5_chat_latest,
          .o1,
          .o1Pro,
          .o1Mini,
