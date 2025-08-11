@@ -138,7 +138,7 @@ public final class OpenAIProvider: Provider {
     continuation: AsyncThrowingStream<Transcript.Entry, any Error>.Continuation
   ) async throws where Content: Generable {
     var generatedTranscript = Transcript()
-    let allowedSteps = 10
+    let allowedSteps = 20
     var currentStep = 0
 
     for _ in 0..<allowedSteps {

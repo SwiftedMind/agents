@@ -25,9 +25,11 @@
 
 #### Build SDK
 
+- Replace {working_directory} with the current working directory
+
 ```
 xcodebuild__build_sim_name_ws({
-  workspacePath: "/Users/swiftedmind/Code/SwiftAgent/SwiftAgent.xcworkspace",
+  workspacePath: "{working_directory}/SwiftAgent.xcworkspace",
   scheme: "SwiftAgent",
   simulatorName: "iPhone 16"
 })
@@ -35,9 +37,11 @@ xcodebuild__build_sim_name_ws({
 
 #### Build Example App
 
+- Replace {working_directory} with the current working directory
+
 ```
 xcodebuild__build_sim_name_ws({
-  workspacePath: "/Users/swiftedmind/Code/SwiftAgent/SwiftAgent.xcworkspace",
+  workspacePath: "{working_directory}/SwiftAgent.xcworkspace",
   scheme: "ExampleApp",
   simulatorName: "iPhone 16"
 })
@@ -45,9 +49,11 @@ xcodebuild__build_sim_name_ws({
 
 #### Run Tests
 
+- Replace {working_directory} with the current working directory
+
 ```
 xcodebuild__test_sim_name_ws({
-  workspacePath: "/Users/swiftedmind/Code/SwiftAgent/SwiftAgent.xcworkspace",
+  workspacePath: "{working_directory}/SwiftAgent.xcworkspace",
   scheme: "SwiftAgentTests",
   simulatorName: "iPhone 16",
   useLatestOS: true,
