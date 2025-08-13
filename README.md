@@ -50,7 +50,7 @@ let agent = Agent<OpenAIProvider>(
 // Run your agent
 let response = try await agent.respond(
   to: "What's the weather like in San Francisco?",
-  using: .gpt4o
+  using: .gpt5
 )
 
 print(response.content)
@@ -149,7 +149,7 @@ struct Task {
 let response = try await agent.respond(
   to: "Create a todo list for planning a vacation",
   generating: TaskList.self,
-  using: .gpt4o
+  using: .gpt5
 )
 
 // response.content is now a strongly-typed TaskList
@@ -169,7 +169,7 @@ let options = GenerationOptions(
 
 let response = try await agent.respond(
   to: "Help me analyze this data",
-  using: .gpt4o,
+  using: .gpt5,
   options: options
 )
 ```
@@ -222,8 +222,8 @@ OpenAIProvider.Configuration.setDefaultConfiguration(config)
 AgentConfiguration.setLoggingEnabled(true)
 
 // Logs show:
-// 🟢 Agent start — model=gpt-4o | tools=weather, calculator
-// 🛠️ Tool call — weather [abc123] 
+// 🟢 Agent start — model=gpt-5 | tools=weather, calculator
+// 🛠️ Tool call — weather [abc123]
 // 📤 Tool output — weather [abc123]
 // ✅ Finished
 ```
