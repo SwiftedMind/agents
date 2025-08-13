@@ -243,12 +243,6 @@ AgentConfiguration.setLoggingEnabled(true)
 
 ---
 
-## 🤝 Contributing
-
-SwiftAgent is open source and welcomes contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
----
-
 ## 📄 License
 
 SwiftAgent is available under the MIT license. See [LICENSE](LICENSE) for more information.
