@@ -96,37 +96,6 @@ struct WeatherTool: AgentTool {
 
 ---
 
-## 🏗️ Architecture
-
-SwiftAgent abstracts the complexity of AI agent development:
-
-```
-┌─────────────────────────────────────────┐
-│            Your Application             │
-├─────────────────────────────────────────┤
-│              SwiftAgent                 │  ← Clean, intuitive API
-├─────────────────────────────────────────┤
-│          Provider Abstraction           │  ← OpenAI, Anthropic, etc.
-├─────────────────────────────────────────┤
-│         Networking & JSON Logic         │  ← Hidden complexity
-└─────────────────────────────────────────┘
-```
-
-**What SwiftAgent handles for you:**
-- Agent execution loops and state management
-- Tool call parsing and execution 
-- Error handling and recovery strategies
-- Provider-specific networking and protocols
-- JSON schema generation and validation
-- Response streaming and processing
-
-**What you focus on:**
-- Defining your tools with `@Generable` structs
-- Writing your business logic
-- Configuring your agent's behavior
-
----
-
 ## 📖 Advanced Usage
 
 ### Structured Output Generation
