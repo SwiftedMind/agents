@@ -111,12 +111,19 @@ public final class OpenAIProvider: Provider {
   ) -> AsyncThrowingStream<Transcript.Entry, any Error> where Content: Generable {
     let setup = AsyncThrowingStream<Transcript.Entry, any Error>.makeStream()
 
+    // Log start of an agent run
+    AgentLog.start(
+      model: String(describing: model),
+      toolNames: tools.map(\.name),
+      promptPreview: prompt.content
+    )
+
     let task = Task<Void, Never> {
       do {
         try await run(transcript: transcript, generating: type, using: model, options: options, continuation: setup.continuation)
       } catch {
-        // Surface a clear, user-friendly message (decoded in HTTP layer when possible)
-        Logger.main.error("OpenAI request failed: \(error.localizedDescription, privacy: .public)")
+        // Surface a clear, user-friendly message
+        AgentLog.error(error, context: "respond")
         setup.continuation.finish(throwing: error)
       }
 
@@ -143,6 +150,8 @@ public final class OpenAIProvider: Provider {
 
     for _ in 0..<allowedSteps {
       currentStep += 1
+
+      AgentLog.stepRequest(step: currentStep)
 
       let request = request(
         including: Transcript(entries: transcript.entries + generatedTranscript.entries),
@@ -179,6 +188,7 @@ public final class OpenAIProvider: Provider {
       }
 
       if outputFunctionCalls.isEmpty {
+        AgentLog.finish()
         continuation.finish()
         return
       }
@@ -248,6 +258,9 @@ public final class OpenAIProvider: Provider {
       status: transcriptStatusFromOpenAIStatus(message.status)
     )
 
+    let text = message.content.compactMap(\.asText).joined(separator: "\n")
+    AgentLog.outputMessage(text: text, status: String(describing: message.status))
+
     generatedTranscript.entries.append(.response(response))
     continuation.yield(.response(response))
   }
@@ -272,10 +285,16 @@ public final class OpenAIProvider: Provider {
           status: transcriptStatusFromOpenAIStatus(message.status)
         )
 
+        AgentLog.outputStructured(json: text, status: String(describing: message.status))
+
         generatedTranscript.entries.append(.response(response))
         continuation.yield(.response(response))
       } catch {
-        let errorContext = GenerationError.StructuredContentParsingFailedContext(rawContent: text, underlyingError: error)
+        AgentLog.error(error, context: "structured_response_parsing")
+        let errorContext = GenerationError.StructuredContentParsingFailedContext(
+          rawContent: text,
+          underlyingError: error
+        )
         throw GenerationError.structuredContentParsingFailed(errorContext)
       }
     case .refusal:
@@ -298,10 +317,17 @@ public final class OpenAIProvider: Provider {
       status: transcriptStatusFromOpenAIStatus(functionCall.status)
     )
 
+    AgentLog.toolCall(
+      name: functionCall.name,
+      callId: functionCall.callId,
+      argumentsJSON: functionCall.arguments
+    )
+
     generatedTranscript.entries.append(.toolCalls(Transcript.ToolCalls(calls: [toolCall])))
     continuation.yield(.toolCalls(Transcript.ToolCalls(calls: [toolCall])))
 
     guard let tool = tools.first(where: { $0.name == functionCall.name }) else {
+      AgentLog.error(GenerationError.unsupportedToolCalled(.init(toolName: functionCall.name)), context: "tool_not_found")
       let errorContext = GenerationError.UnsupportedToolCalledContext(toolName: functionCall.name)
       throw GenerationError.unsupportedToolCalled(errorContext)
     }
@@ -316,9 +342,17 @@ public final class OpenAIProvider: Provider {
       )
       let transcriptEntry = Transcript.Entry.toolOutput(toolOutputEntry)
 
+      // Try to log as JSON if possible
+      AgentLog.toolOutput(
+        name: tool.name,
+        callId: functionCall.callId,
+        outputJSONOrText: output.generatedContent.jsonString
+      )
+
       generatedTranscript.entries.append(transcriptEntry)
       continuation.yield(transcriptEntry)
     } catch {
+      AgentLog.error(error, context: "tool_call_failed_\(tool.name)")
       throw ToolCallError(tool: tool, underlyingError: error)
     }
   }
@@ -341,6 +375,8 @@ public final class OpenAIProvider: Provider {
       status: transcriptStatusFromOpenAIStatus(reasoning.status),
       metadata: ReasoningMetadata(reasoningId: reasoning.id)
     )
+
+    AgentLog.reasoning(summary: summary)
 
     let entry = Transcript.Entry.reasoning(entryData)
     generatedTranscript.entries.append(entry)
