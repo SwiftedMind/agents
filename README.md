@@ -234,13 +234,6 @@ AgentConfiguration.setLoggingEnabled(true)
 
 **⚠️ Work in Progress**: SwiftAgent is under active development. APIs may change, and breaking updates are expected. Use in production with caution.
 
-### Roadmap
-- [ ] Additional provider support (Anthropic, Google, etc.)
-- [ ] Enhanced error handling and recovery
-- [ ] Tool result caching and persistence
-- [ ] Advanced agent orchestration patterns
-- [ ] Performance optimizations
-
 ---
 
 ## 📄 License
