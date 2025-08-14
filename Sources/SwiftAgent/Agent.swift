@@ -6,12 +6,16 @@ import FoundationModels
 
 @Observable @MainActor
 public final class Agent<P: Provider> {
+  public typealias Prompt = Core.Prompt
+  public typealias PromptRepresentable = Core.PromptRepresentable
+  public typealias PromptBuilder = Core.PromptBuilder
   public typealias Transcript = Core.Transcript<P.Metadata>
   public typealias GenerationOptions = Core.GenerationOptions
   public typealias Response<Content: Generable> = AgentResponse<P, Content>
+  
+  private let provider: P
 
   public var transcript: Transcript
-  private let provider: P
 
   public init(
     tools: [any AgentTool] = [],
@@ -55,6 +59,24 @@ public final class Agent<P: Provider> {
 
     return AgentResponse<P, String>(content: responseContent, addedEntries: addedEntities)
   }
+  
+  @discardableResult
+  public func respond(
+    to prompt: Prompt,
+    using model: P.Model = .default,
+    options: GenerationOptions = GenerationOptions()
+  ) async throws -> Response<String> {
+    try await respond(to: prompt.stringValue, using: model, options: options)
+  }
+  
+  @discardableResult
+  public func respond(
+    using model: P.Model = .default,
+    options: GenerationOptions = GenerationOptions(),
+    @PromptBuilder prompt: () throws -> Prompt
+  ) async throws -> Response<String> {
+    try await respond(to: prompt().stringValue, using: model, options: options)
+  }
 
   @discardableResult
   public func respond<Content>(
@@ -94,6 +116,36 @@ public final class Agent<P: Provider> {
 
     let errorContext = GenerationError.UnexpectedStructuredResponseContext()
     throw GenerationError.unexpectedStructuredResponse(errorContext)
+  }
+  
+  @discardableResult
+  public func respond<Content>(
+    to prompt: Prompt,
+    generating type: Content.Type = Content.self,
+    using model: P.Model = .default,
+    options: GenerationOptions = GenerationOptions()
+  ) async throws -> Response<Content> where Content: Generable {
+    try await respond(
+      to: prompt.stringValue,
+      generating: type,
+      using: model,
+      options: options
+    )
+  }
+  
+  @discardableResult
+  public func respond<Content>(
+    generating type: Content.Type = Content.self,
+    using model: P.Model = .default,
+    options: GenerationOptions = GenerationOptions(),
+    @PromptBuilder prompt: () throws -> Prompt
+  ) async throws -> Response<Content> where Content: Generable {
+    try await respond(
+      to: prompt().stringValue,
+      generating: type,
+      using: model,
+      options: options
+    )
   }
 }
 
