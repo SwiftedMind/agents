@@ -83,6 +83,26 @@ extension String: PromptRepresentable {
   }
 }
 
+/// Convenience: types can opt into PromptRepresentable if they already provide a string description.
+///
+/// This means a custom type only needs to declare `PromptRepresentable` conformance if it already
+/// conforms to `CustomStringConvertible` – the default implementation uses `description`.
+@available(iOS 26.0, macOS 26.0, *)
+@available(tvOS, unavailable)
+@available(watchOS, unavailable)
+public extension PromptRepresentable where Self: CustomStringConvertible {
+  @PromptBuilder var promptRepresentation: Prompt { description }
+}
+
+/// Convenience: enums or other wrappers that expose a `String` raw value automatically emit that
+/// value when also declaring `PromptRepresentable`.
+@available(iOS 26.0, macOS 26.0, *)
+@available(tvOS, unavailable)
+@available(watchOS, unavailable)
+public extension PromptRepresentable where Self: RawRepresentable, Self.RawValue == String {
+  @PromptBuilder var promptRepresentation: Prompt { rawValue }
+}
+
 // MARK: - Structured Types
 
 /// Markdown-style section. Nested sections increment the `#` level.
@@ -109,7 +129,7 @@ public struct PromptSection: PromptRepresentable, Sendable {
 @available(watchOS, unavailable)
 public struct PromptEmptyLine: PromptRepresentable, Sendable {
   public init() {}
-  
+
   public var promptRepresentation: Prompt {
     Prompt(nodes: [.emptyLine])
   }
@@ -177,31 +197,31 @@ package enum Renderer {
   ) -> String {
     let renderedNodes: [String] = nodes.enumerated().compactMap { index, node in
       let rendered = render(node: node, indentLevel: indentLevel, headingLevel: headingLevel)
-      
+
       // Skip empty content, but allow emptyLine nodes
       let isEmptyLine = if case .emptyLine = node { true } else { false }
       guard !rendered.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isEmptyLine else { return nil }
-      
+
       // Add spacing around sections
       if case .section = node {
         var result = rendered
-        
+
         // Add empty line before section (unless it's the first node)
         if index > 0 {
           result = "\n" + result
         }
-        
+
         // Add empty line after nested section (unless it's the last node or top-level)
         if headingLevel > 1 && index < nodes.count - 1 {
           result = result + "\n"
         }
-        
+
         return result
       }
-      
+
       return rendered
     }
-    
+
     return renderedNodes.joined(separator: "\n")
   }
 

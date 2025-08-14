@@ -132,4 +132,17 @@ struct PromptBuilderTests {
     User is asking about Swift
     """)
   }
+
+  @Test("Custom type via description default")
+  func customTypeDescriptionDefault() {
+    struct User: CustomStringConvertible, PromptRepresentable {
+      var name: String
+      var description: String { "User(\(name))" }
+      // No promptRepresentation needed; default uses description
+    }
+
+    let user = User(name: "Taylor")
+    let prompt = Prompt { user }
+    #expect(prompt.formatted() == "User(Taylor)")
+  }
 }
