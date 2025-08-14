@@ -70,8 +70,9 @@ enum AgentLog {
   /// Logs an error during the run.
   static func error(_ error: any Error, context: String? = nil) {
     let ctx = context ?? "-"
+    let errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
     Logger.main.error(
-      "⛔️ \(String(localized: "Error")) — \(ctx, privacy: .public): \(String(describing: error), privacy: .public)"
+      "⛔️ \(String(localized: "Error")) — \(ctx, privacy: .public): \(errorMessage, privacy: .public)"
     )
   }
 

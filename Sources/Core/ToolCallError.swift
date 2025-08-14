@@ -22,6 +22,8 @@ public struct ToolCallError: Error, LocalizedError {
 
   /// A string representation of the error description.
   public var errorDescription: String? {
-    underlyingError.localizedDescription.debugDescription
+    let toolName = String(describing: type(of: tool))
+    let underlyingDescription = (underlyingError as? LocalizedError)?.errorDescription ?? underlyingError.localizedDescription
+    return "Tool '\(toolName)' failed: \(underlyingDescription)"
   }
 }

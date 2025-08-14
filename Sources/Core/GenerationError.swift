@@ -9,6 +9,23 @@ public enum GenerationError: Error, LocalizedError {
   case structuredContentParsingFailed(StructuredContentParsingFailedContext)
   case contentRefusal(ContentRefusalContext)
   case unknown
+
+  public var errorDescription: String? {
+    switch self {
+    case .unexpectedStructuredResponse:
+      return "Received unexpected structured response from model"
+    case let .unsupportedToolCalled(context):
+      return "Model called unsupported tool: \(context.toolName)"
+    case let .emptyMessageContent(context):
+      return "Model returned empty content when expecting \(context.expectedType)"
+    case let .structuredContentParsingFailed(context):
+      return "Failed to parse structured content: \(context.underlyingError)"
+    case let .contentRefusal(context):
+      return "Model refused to generate content for \(context.expectedType)"
+    case .unknown:
+      return "Unknown generation error"
+    }
+  }
 }
 
 public extension GenerationError {
