@@ -1,5 +1,5 @@
 {
-  "originHash" : "44ebcaa76215ec4777c4b814d5fa73b6b2fba96ad5fa2b94de4f33ea4c761010",
+  "originHash" : "9719ae2a1d04d682eecdb3d760e4f37d604a5db98e0ea4d076111a607bbf4807",
   "pins" : [
     {
       "identity" : "metacodable",
@@ -26,6 +26,15 @@
       "state" : {
         "revision" : "8c0c0a8b49e080e54e5e328cc552821ff07cd341",
         "version" : "1.2.1"
+      }
+    },
+    {
+      "identity" : "swift-openai-responses",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SwiftedMind/swift-openai-responses",
+      "state" : {
+        "branch" : "main",
+        "revision" : "e61ca50bf98d4e8bcbb713ea52865d10b0076317"
       }
     },
     {
