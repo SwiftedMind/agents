@@ -2,16 +2,19 @@
 
 import Foundation
 
+/// Integers render using their textual description.
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
 extension Int: PromptRepresentable {}
 
+/// Doubles render using their textual description.
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
 extension Double: PromptRepresentable {}
 
+/// UUIDs render using their canonical `uuidString`.
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
@@ -21,6 +24,7 @@ extension UUID: PromptRepresentable {
   }
 }
 
+/// URLs render using their absolute string representation.
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
@@ -30,13 +34,13 @@ extension URL: PromptRepresentable {
   }
 }
 
+/// Dates render in ISO‑8601 format using modern `Foundation` formatting.
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
 extension Date: PromptRepresentable {
   public var promptRepresentation: Prompt {
     // Use modern Foundation formatting for a deterministic ISO 8601 output.
-    self.formatted(.iso8601)
+    formatted(.iso8601)
   }
 }
-

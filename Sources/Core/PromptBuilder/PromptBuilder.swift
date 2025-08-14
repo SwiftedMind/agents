@@ -4,6 +4,29 @@ import Foundation
 
 // MARK: - Public Surface
 
+/// A lightweight, composable description of a prompt.
+///
+/// Use `Prompt` to build human‑readable instructions with sections, tags and plain text.
+/// You can either pass a single `PromptRepresentable` value or use the `@PromptBuilder`
+/// initializer to compose larger structures.
+///
+/// Example: Build from a single string
+/// ```swift
+/// let prompt = Prompt("Hello, world!")
+/// print(prompt.formatted()) // "Hello, world!"
+/// ```
+///
+/// Example: Compose with sections and tags
+/// ```swift
+/// let prompt = Prompt {
+///   PromptSection("Instructions") {
+///     "Be concise"
+///     PromptTag("meta", attributes: ["role": "system"]) {
+///       "Internal guidance"
+///     }
+///   }
+/// }
+/// ```
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
@@ -11,17 +34,22 @@ public struct Prompt: Sendable {
   /// Internal node tree we render later.
   package let nodes: [PromptNode]
 
-  /// Creates an instance with the content you specify.
+  /// Creates a prompt from a single value.
+  ///
+  /// If you pass a `String`, it becomes a text node. Any custom type may conform to
+  /// `PromptRepresentable` to control how it renders.
   public init(_ content: some PromptRepresentable) {
     self = content.promptRepresentation
   }
 
-  /// Builder initializer.
+  /// Creates a prompt using the `@PromptBuilder` result builder.
+  ///
+  /// Compose text, sections and tags succinctly.
   public init(@PromptBuilder _ content: () throws -> Prompt) rethrows {
     self = try content()
   }
 
-  /// Render to a formatted string.
+  /// Renders the prompt to a formatted string suitable for LLM input.
   public func formatted() -> String {
     Renderer.render(nodes, indentLevel: 0, headingLevel: 1)
       .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -37,19 +65,33 @@ extension Prompt: PromptRepresentable {
 
 // MARK: - Result Builder
 
+/// Builds `Prompt` values from nested expressions.
+///
+/// You rarely use `PromptBuilder` directly. Instead, it powers the `Prompt` initializer with
+/// `@PromptBuilder` so you can write natural, Markdown‑like structures:
+///
+/// ```swift
+/// let prompt = Prompt {
+///   "Title"
+///   PromptEmptyLine()
+///   PromptSection("Details") {
+///     "Body text"
+///   }
+/// }
+/// ```
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
 @resultBuilder
 public struct PromptBuilder {
-  /// 1) Normalize everything to Prompt at expression time.
+  /// Normalize any `PromptRepresentable` to a `Prompt` during expression processing.
   public static func buildExpression<P>(_ expression: P) -> Prompt where P: PromptRepresentable {
     expression.promptRepresentation
   }
 
   public static func buildExpression(_ expression: Prompt) -> Prompt { expression }
 
-  /// 2) Now buildBlock can be uniform, no packs needed.
+  /// Concatenates multiple child prompts.
   public static func buildBlock(_ components: Prompt...) -> Prompt {
     Prompt(nodes: components.flatMap(\.nodes))
   }
@@ -66,6 +108,24 @@ public struct PromptBuilder {
 
 // MARK: - PromptRepresentable
 
+/// A type that can be represented inside a `Prompt`.
+///
+/// Conform your custom types by returning either a `String` (becomes a text node) or by composing
+/// other `Prompt` building blocks such as `PromptSection` or `PromptTag`.
+///
+/// Minimal conformance:
+/// ```swift
+/// extension User: PromptRepresentable {
+///   @PromptBuilder public var promptRepresentation: Prompt {
+///     "User: \(name)"
+///   }
+/// }
+/// ```
+///
+/// Convenience defaults are provided:
+/// - If your type conforms to `CustomStringConvertible`, the description is used automatically
+///   once you opt in to `PromptRepresentable`.
+/// - If your type is `RawRepresentable` with `RawValue == String`, the raw value is used.
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
@@ -74,6 +134,7 @@ public protocol PromptRepresentable {
 }
 
 /// Allow plain Strings in builders.
+/// Allows plain strings to be used directly in prompt builders.
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
@@ -106,6 +167,16 @@ public extension PromptRepresentable where Self: RawRepresentable, Self.RawValue
 // MARK: - Structured Types
 
 /// Markdown-style section. Nested sections increment the `#` level.
+/// A Markdown‑style section that renders as a `#` heading with nested content.
+///
+/// Each nested `PromptSection` increases the heading level.
+///
+/// Example:
+/// ```swift
+/// PromptSection("Overview") { "Body" }
+/// // Renders:
+/// // # Overview\nBody
+/// ```
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
@@ -124,6 +195,7 @@ public struct PromptSection: PromptRepresentable, Sendable {
 }
 
 /// Represents an empty line in the output.
+/// Inserts a single empty line between surrounding content.
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
@@ -136,6 +208,18 @@ public struct PromptEmptyLine: PromptRepresentable, Sendable {
 }
 
 /// XML-like tag with optional attributes. Renders `<name a="1">…</name>`.
+/// An XML‑like tag with optional attributes.
+///
+/// Renders either a single self‑closing tag when empty or an open/close tag with indented content.
+///
+/// Example:
+/// ```swift
+/// PromptTag("note", attributes: ["type": "system"]) {
+///   "Body"
+/// }
+/// // Renders:
+/// // <note type="system">\n  //   Body\n  // </note>
+/// ```
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)

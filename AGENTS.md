@@ -3,6 +3,7 @@
 ## General Instructions
 
 - Always follow the best practices of naming things in Swift
+- ALWAYS use clear names for types and variables, don't just use single letters or abbreviations. Clarity is key!
 - Use clean formatting
 - Always make use of todo lists to keep track of your plan and work, unless the task is trivial or very quick
 - When making changes to the code, ALWAYS build the SDK to check for compilation errors
