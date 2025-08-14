@@ -103,6 +103,18 @@ public struct PromptSection: PromptRepresentable, Sendable {
   }
 }
 
+/// Represents an empty line in the output.
+@available(iOS 26.0, macOS 26.0, *)
+@available(tvOS, unavailable)
+@available(watchOS, unavailable)
+public struct PromptEmptyLine: PromptRepresentable, Sendable {
+  public init() {}
+  
+  public var promptRepresentation: Prompt {
+    Prompt(nodes: [.emptyLine])
+  }
+}
+
 /// XML-like tag with optional attributes. Renders `<name a="1">…</name>`.
 @available(iOS 26.0, macOS 26.0, *)
 @available(tvOS, unavailable)
@@ -151,6 +163,7 @@ package enum PromptNode: Sendable {
   case text(String)
   case section(title: String, children: [PromptNode])
   case tag(name: String, attributes: [String: String], children: [PromptNode])
+  case emptyLine
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -162,10 +175,34 @@ package enum Renderer {
     indentLevel: Int,
     headingLevel: Int
   ) -> String {
-    nodes
-      .map { render(node: $0, indentLevel: indentLevel, headingLevel: headingLevel) }
-      .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-      .joined(separator: "\n")
+    let renderedNodes: [String] = nodes.enumerated().compactMap { index, node in
+      let rendered = render(node: node, indentLevel: indentLevel, headingLevel: headingLevel)
+      
+      // Skip empty content, but allow emptyLine nodes
+      let isEmptyLine = if case .emptyLine = node { true } else { false }
+      guard !rendered.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isEmptyLine else { return nil }
+      
+      // Add spacing around sections
+      if case .section = node {
+        var result = rendered
+        
+        // Add empty line before section (unless it's the first node)
+        if index > 0 {
+          result = "\n" + result
+        }
+        
+        // Add empty line after nested section (unless it's the last node or top-level)
+        if headingLevel > 1 && index < nodes.count - 1 {
+          result = result + "\n"
+        }
+        
+        return result
+      }
+      
+      return rendered
+    }
+    
+    return renderedNodes.joined(separator: "\n")
   }
 
   static func render(
@@ -181,15 +218,21 @@ package enum Renderer {
       let header = headingPrefix(headingLevel) + " " + title
       let body = render(children, indentLevel: indentLevel, headingLevel: headingLevel + 1)
       if body.isEmpty { return indentString(indentLevel) + header }
-      return indentString(indentLevel) + header + "\n" + body + "\n"
+      return indentString(indentLevel) + header + "\n" + body
 
     case let .tag(name, attributes, children):
       let attrs = renderAttributes(attributes)
-      let open = indentString(indentLevel) + "<" + name + attrs + ">"
-      let body = render(children, indentLevel: indentLevel + 1, headingLevel: headingLevel)
-      let close = indentString(indentLevel) + "</" + name + ">"
-      if body.isEmpty { return open + close.dropFirst(close.hasPrefix("\n") ? 1 : 0) }
-      return open + "\n" + body + "\n" + close
+      if children.isEmpty {
+        return indentString(indentLevel) + "<" + name + attrs + " />"
+      } else {
+        let open = indentString(indentLevel) + "<" + name + attrs + ">"
+        let body = render(children, indentLevel: indentLevel + 1, headingLevel: headingLevel)
+        let close = indentString(indentLevel) + "</" + name + ">"
+        return open + "\n" + body + "\n" + close
+      }
+
+    case .emptyLine:
+      return ""
     }
   }
 
