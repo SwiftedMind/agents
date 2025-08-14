@@ -66,7 +66,7 @@ public final class Agent<P: Provider> {
     using model: P.Model = .default,
     options: GenerationOptions = GenerationOptions()
   ) async throws -> Response<String> {
-    try await respond(to: prompt.stringValue, using: model, options: options)
+    try await respond(to: prompt.formatted(), using: model, options: options)
   }
   
   @discardableResult
@@ -75,7 +75,7 @@ public final class Agent<P: Provider> {
     options: GenerationOptions = GenerationOptions(),
     @PromptBuilder prompt: () throws -> Prompt
   ) async throws -> Response<String> {
-    try await respond(to: prompt().stringValue, using: model, options: options)
+    try await respond(to: prompt().formatted(), using: model, options: options)
   }
 
   @discardableResult
@@ -126,7 +126,7 @@ public final class Agent<P: Provider> {
     options: GenerationOptions = GenerationOptions()
   ) async throws -> Response<Content> where Content: Generable {
     try await respond(
-      to: prompt.stringValue,
+      to: prompt.formatted(),
       generating: type,
       using: model,
       options: options
@@ -141,7 +141,7 @@ public final class Agent<P: Provider> {
     @PromptBuilder prompt: () throws -> Prompt
   ) async throws -> Response<Content> where Content: Generable {
     try await respond(
-      to: prompt().stringValue,
+      to: prompt().formatted(),
       generating: type,
       using: model,
       options: options
