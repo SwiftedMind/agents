@@ -33,11 +33,8 @@ public protocol ProviderModel {
 // MARK: - Metadata
 
 public protocol ProviderMetadata: Codable, Sendable, Equatable {
-  associatedtype Reasoning: ReasoningProviderMetadata
-}
-
-public protocol ReasoningProviderMetadata: Codable, Sendable, Equatable {
-  var reasoningId: String { get set }
+  associatedtype Reasoning: Codable, Sendable, Equatable
+  associatedtype Response: Codable, Sendable, Equatable
 }
 
 // MARK: Configuration
