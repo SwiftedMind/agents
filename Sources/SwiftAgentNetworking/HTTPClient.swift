@@ -147,24 +147,42 @@ public final class URLSessionHTTPClient: HTTPClient {
       await prepare(&request)
     }
 
+    // Log the outgoing request
+    NetworkLog.request(request)
+
     // Perform request, with one optional retry on 401
-    let (data, response) = try await perform(request: request)
+    do {
+      let (data, response) = try await perform(request: request)
 
-    if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401,
-       let onUnauthorized = configuration.interceptors.onUnauthorized {
-      let shouldRetry = await onUnauthorized(httpResponse, data, request)
-      if shouldRetry {
-        var retryRequest = request
-        // Allow re-preparing the request (e.g. with refreshed token)
-        if let prepare = configuration.interceptors.prepareRequest {
-          await prepare(&retryRequest)
+      // Log the response
+      NetworkLog.response(response, data: data)
+
+      if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401,
+         let onUnauthorized = configuration.interceptors.onUnauthorized {
+        let shouldRetry = await onUnauthorized(httpResponse, data, request)
+        if shouldRetry {
+          var retryRequest = request
+          // Allow re-preparing the request (e.g. with refreshed token)
+          if let prepare = configuration.interceptors.prepareRequest {
+            await prepare(&retryRequest)
+          }
+
+          // Log the retry request
+          NetworkLog.request(retryRequest)
+
+          let (retryData, retryResponse) = try await perform(request: retryRequest)
+
+          // Log the retry response
+          NetworkLog.response(retryResponse, data: retryData)
+
+          return try decode(ResponseBody.self, data: retryData, response: retryResponse)
         }
-        let (retryData, retryResponse) = try await perform(request: retryRequest)
-        return try decode(ResponseBody.self, data: retryData, response: retryResponse)
       }
-    }
 
-    return try decode(ResponseBody.self, data: data, response: response)
+      return try decode(ResponseBody.self, data: data, response: response)
+    } catch {
+      throw error
+    }
   }
 
   // MARK: - Helpers
@@ -206,5 +224,3 @@ public final class URLSessionHTTPClient: HTTPClient {
     }
   }
 }
-
- 
