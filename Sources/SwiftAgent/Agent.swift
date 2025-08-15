@@ -12,7 +12,7 @@ public final class Agent<P: Provider> {
   public typealias Transcript = Core.Transcript<P.Metadata>
   public typealias GenerationOptions = Core.GenerationOptions
   public typealias Response<Content: Generable> = AgentResponse<P, Content>
-  
+
   private let provider: P
 
   public var transcript: Transcript
@@ -59,7 +59,7 @@ public final class Agent<P: Provider> {
 
     return AgentResponse<P, String>(content: responseContent, addedEntries: addedEntities)
   }
-  
+
   @discardableResult
   public func respond(
     to prompt: Prompt,
@@ -68,7 +68,7 @@ public final class Agent<P: Provider> {
   ) async throws -> Response<String> {
     try await respond(to: prompt.formatted(), using: model, options: options)
   }
-  
+
   @discardableResult
   public func respond(
     using model: P.Model = .default,
@@ -117,7 +117,7 @@ public final class Agent<P: Provider> {
     let errorContext = GenerationError.UnexpectedStructuredResponseContext()
     throw GenerationError.unexpectedStructuredResponse(errorContext)
   }
-  
+
   @discardableResult
   public func respond<Content>(
     to prompt: Prompt,
@@ -132,7 +132,7 @@ public final class Agent<P: Provider> {
       options: options
     )
   }
-  
+
   @discardableResult
   public func respond<Content>(
     generating type: Content.Type = Content.self,

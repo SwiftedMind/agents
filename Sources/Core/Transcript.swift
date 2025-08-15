@@ -3,13 +3,6 @@
 import Foundation
 import FoundationModels
 
-/*
-
- TODO: Document the reason why Transcript HAS to be tied to its original provider:
- Say you start out with OpenAI o3. You get an encrypted_content property containing the raw encoded reasoning you can pass back to continue the conversation with the full reasoning history. Obviously you won't be able to decode this yourself and give it to another model, that's why it's encrypted in the first place.
-
- */
-
 public struct Transcript<Metadata: ProviderMetadata>: Sendable, Equatable {
   public var entries: [Entry]
 
@@ -115,7 +108,6 @@ public extension Transcript {
 
   struct ToolCalls: Sendable, Identifiable, Equatable {
     public var id: String
-
     public var calls: [ToolCall]
 
     public init(id: String = UUID().uuidString, calls: [ToolCall]) {

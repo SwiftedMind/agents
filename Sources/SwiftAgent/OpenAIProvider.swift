@@ -497,7 +497,6 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  // TODO: Add all the openAI ids as metadata to the transcript, just to be safe
   func transcriptToListItems(_ transcript: Transcript) -> [Input.ListItem] {
     var listItems: [Input.ListItem] = []
 
