@@ -421,7 +421,14 @@ public final class OpenAIProvider: Provider {
       store: false,
       temperature: model.isReasoning ? nil : options.temperature,
       text: textConfig,
-      tools: tools.map { .function(name: $0.name, description: $0.description, parameters: $0.parameters) }
+      tools: tools.map { tool in
+        .function(
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.parameters,
+          strict: false // Important because GenerationSchema doesn't produce a compliant strict schema for OpenAI!
+        )
+      }
     )
   }
 
