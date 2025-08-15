@@ -173,15 +173,20 @@ public extension Transcript {
 
   struct Response: Sendable, Identifiable, Equatable {
     public var id: String
-
     public var segments: [Segment]
-
     public var status: Status
+    package var metadata: Metadata.Response
 
-    public init(id: String = UUID().uuidString, segments: [Segment], status: Status) {
+    public init(
+      id: String = UUID().uuidString,
+      segments: [Segment],
+      status: Status,
+      metadata: Metadata.Response
+    ) {
       self.id = id
       self.segments = segments
       self.status = status
+      self.metadata = metadata
     }
   }
 

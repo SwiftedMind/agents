@@ -21,13 +21,22 @@ public final class OpenAIProvider: Provider {
 
   public struct Metadata: ProviderMetadata {
     public typealias Reasoning = ReasoningMetadata
+    public typealias Response = OutputMessageMetadata
   }
 
-  public struct ReasoningMetadata: ReasoningProviderMetadata {
+  public struct ReasoningMetadata: Codable, Sendable, Equatable {
     public var reasoningId: String
 
     package init(reasoningId: String) {
       self.reasoningId = reasoningId
+    }
+  }
+  
+  public struct OutputMessageMetadata: Codable, Sendable, Equatable {
+    public var messageOutputId: String
+    
+    package init(messageOutputId: String) {
+      self.messageOutputId = messageOutputId
     }
   }
 
@@ -255,7 +264,8 @@ public final class OpenAIProvider: Provider {
   ) async throws {
     let response = Transcript.Response(
       segments: message.content.compactMap(\.asText).map { .text(Transcript.TextSegment(content: $0)) },
-      status: transcriptStatusFromOpenAIStatus(message.status)
+      status: transcriptStatusFromOpenAIStatus(message.status),
+      metadata: Metadata.Response(messageOutputId: message.id)
     )
 
     let text = message.content.compactMap(\.asText).joined(separator: "\n")
@@ -282,7 +292,8 @@ public final class OpenAIProvider: Provider {
         let generatedContent = try GeneratedContent(json: text)
         let response = Transcript.Response(
           segments: [.structure(Transcript.StructuredSegment(content: generatedContent))],
-          status: transcriptStatusFromOpenAIStatus(message.status)
+          status: transcriptStatusFromOpenAIStatus(message.status),
+          metadata: Metadata.Response(messageOutputId: message.id)
         )
 
         AgentLog.outputStructured(json: text, status: String(describing: message.status))
@@ -486,6 +497,7 @@ public final class OpenAIProvider: Provider {
     }
   }
 
+  // TODO: Add all the openAI ids as metadata to the transcript, just to be safe
   func transcriptToListItems(_ transcript: Transcript) -> [Input.ListItem] {
     var listItems: [Input.ListItem] = []
 
@@ -545,7 +557,7 @@ public final class OpenAIProvider: Provider {
               return nil
             }
           },
-          id: response.id,
+          id: response.metadata.messageOutputId,
           role: .assistant,
           status: transcriptStatusToMessageStatus(response.status)
         )
