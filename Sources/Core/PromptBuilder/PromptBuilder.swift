@@ -238,6 +238,12 @@ public struct PromptTag: PromptRepresentable, Sendable {
     self.content = try content()
   }
 
+  public init(_ name: String, attributes: [String: String] = [:]) {
+    self.name = name
+    self.attributes = attributes
+    content = Prompt(nodes: [])
+  }
+
   public var promptRepresentation: Prompt {
     Prompt(nodes: [.tag(name: name, attributes: attributes, children: content.nodes)])
   }
