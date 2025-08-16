@@ -2,15 +2,13 @@
 
 import Core
 import Foundation
-import FoundationModels
 import OpenAI
 import OSLog
-import SwiftAgentNetworking
+import Internal
 
-public final class OpenAIProvider: Provider {
+public final class OpenAIAdapter: AgentAdapter {
   public typealias Model = OpenAI.Model
-  public typealias Transcript = Core.Transcript<Metadata>
-  public typealias GenerationOptions = Core.GenerationOptions
+  public typealias Transcript<Embeddable: PromptEmbeddable> = SwiftAgent.Transcript<Metadata, Embeddable>
 
   private var tools: [any AgentTool]
   private var instructions: String = ""
@@ -19,7 +17,7 @@ public final class OpenAIProvider: Provider {
 
   // MARK: - Metadata
 
-  public struct Metadata: ProviderMetadata {
+  public struct Metadata: AdapterMetadata {
     public typealias Reasoning = ReasoningMetadata
     public typealias Response = OutputMessageMetadata
   }
@@ -31,10 +29,10 @@ public final class OpenAIProvider: Provider {
       self.reasoningId = reasoningId
     }
   }
-  
+
   public struct OutputMessageMetadata: Codable, Sendable, Equatable {
     public var messageOutputId: String
-    
+
     package init(messageOutputId: String) {
       self.messageOutputId = messageOutputId
     }
@@ -42,7 +40,7 @@ public final class OpenAIProvider: Provider {
 
   // MARK: - Configuration
 
-  public struct Configuration: Core.ProviderConfiguration {
+  public struct Configuration: AdapterConfiguration {
     public var httpClient: HTTPClient
     public var responsesPath: String
 
@@ -111,14 +109,14 @@ public final class OpenAIProvider: Provider {
     responsesPath = configuration.responsesPath
   }
 
-  public func respond<Content>(
-    to prompt: Transcript.Prompt,
+  public func respond<Content, Embeddable>(
+    to prompt: Transcript<Embeddable>.Prompt,
     generating type: Content.Type,
     using model: Model = .default,
-    including transcript: Transcript,
+    including transcript: Transcript<Embeddable>,
     options: GenerationOptions
-  ) -> AsyncThrowingStream<Transcript.Entry, any Error> where Content: Generable {
-    let setup = AsyncThrowingStream<Transcript.Entry, any Error>.makeStream()
+  ) -> AsyncThrowingStream<Transcript<Embeddable>.Entry, any Error> where Content: FoundationGenerable, Embeddable: PromptEmbeddable {
+    let setup = AsyncThrowingStream<Transcript<Embeddable>.Entry, any Error>.makeStream()
 
     // Log start of an agent run
     AgentLog.start(
@@ -146,14 +144,14 @@ public final class OpenAIProvider: Provider {
     return setup.stream
   }
 
-  private func run<Content>(
-    transcript: Transcript,
+  private func run<Content, Embeddable>(
+    transcript: Transcript<Embeddable>,
     generating type: Content.Type,
     using model: Model = .default,
     options: GenerationOptions,
-    continuation: AsyncThrowingStream<Transcript.Entry, any Error>.Continuation
-  ) async throws where Content: Generable {
-    var generatedTranscript = Transcript()
+    continuation: AsyncThrowingStream<Transcript<Embeddable>.Entry, any Error>.Continuation
+  ) async throws where Content: FoundationGenerable, Embeddable: PromptEmbeddable {
+    var generatedTranscript = Transcript<Embeddable>()
     let allowedSteps = 20
     var currentStep = 0
 
@@ -163,7 +161,7 @@ public final class OpenAIProvider: Provider {
       AgentLog.stepRequest(step: currentStep)
 
       let request = request(
-        including: Transcript(entries: transcript.entries + generatedTranscript.entries),
+        including: Transcript<Embeddable>(entries: transcript.entries + generatedTranscript.entries),
         generating: type,
         using: model,
         options: options
@@ -204,12 +202,12 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  private func handleOutput<Content>(
+  private func handleOutput<Content, Embeddable>(
     _ output: Item.Output,
     type: Content.Type,
-    generatedTranscript: inout Transcript,
-    continuation: AsyncThrowingStream<Transcript.Entry, any Error>.Continuation
-  ) async throws where Content: Generable {
+    generatedTranscript: inout Transcript<Embeddable>,
+    continuation: AsyncThrowingStream<Transcript<Embeddable>.Entry, any Error>.Continuation
+  ) async throws where Content: FoundationGenerable, Embeddable: PromptEmbeddable {
     switch output {
     case let .message(message):
       try await handleMessage(
@@ -235,12 +233,12 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  private func handleMessage<Content>(
+  private func handleMessage<Content, Embeddable: PromptEmbeddable>(
     _ message: Message.Output,
     type: Content.Type,
-    generatedTranscript: inout Transcript,
-    continuation: AsyncThrowingStream<Transcript.Entry, any Error>.Continuation
-  ) async throws where Content: Generable {
+    generatedTranscript: inout Transcript<Embeddable>,
+    continuation: AsyncThrowingStream<Transcript<Embeddable>.Entry, any Error>.Continuation
+  ) async throws where Content: FoundationGenerable, Embeddable: PromptEmbeddable {
     if type == String.self {
       try await processStringResponse(
         message,
@@ -257,12 +255,12 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  private func processStringResponse(
+  private func processStringResponse<Embeddable>(
     _ message: Message.Output,
-    generatedTranscript: inout Transcript,
-    continuation: AsyncThrowingStream<Transcript.Entry, any Error>.Continuation
-  ) async throws {
-    let response = Transcript.Response(
+    generatedTranscript: inout Transcript<Embeddable>,
+    continuation: AsyncThrowingStream<Transcript<Embeddable>.Entry, any Error>.Continuation
+  ) async throws where Embeddable: PromptEmbeddable {
+    let response = Transcript<Embeddable>.Response(
       segments: message.content.compactMap(\.asText).map { .text(Transcript.TextSegment(content: $0)) },
       status: transcriptStatusFromOpenAIStatus(message.status),
       metadata: Metadata.Response(messageOutputId: message.id)
@@ -275,12 +273,12 @@ public final class OpenAIProvider: Provider {
     continuation.yield(.response(response))
   }
 
-  private func processStructuredResponse<Content>(
+  private func processStructuredResponse<Content, Embeddable>(
     _ message: Message.Output,
     type: Content.Type,
-    generatedTranscript: inout Transcript,
-    continuation: AsyncThrowingStream<Transcript.Entry, any Error>.Continuation
-  ) async throws where Content: Generable {
+    generatedTranscript: inout Transcript<Embeddable>,
+    continuation: AsyncThrowingStream<Transcript<Embeddable>.Entry, any Error>.Continuation
+  ) async throws where Content: FoundationGenerable, Embeddable: PromptEmbeddable {
     guard let content = message.content.first else {
       let errorContext = GenerationError.EmptyMessageContentContext(expectedType: String(describing: type))
       throw GenerationError.emptyMessageContent(errorContext)
@@ -289,8 +287,8 @@ public final class OpenAIProvider: Provider {
     switch content {
     case let .text(text, _, _):
       do {
-        let generatedContent = try GeneratedContent(json: text)
-        let response = Transcript.Response(
+        let generatedContent = try FoundationGeneratedContent(json: text)
+        let response = Transcript<Embeddable>.Response(
           segments: [.structure(Transcript.StructuredSegment(content: generatedContent))],
           status: transcriptStatusFromOpenAIStatus(message.status),
           metadata: Metadata.Response(messageOutputId: message.id)
@@ -314,14 +312,14 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  private func handleFunctionCall(
+  private func handleFunctionCall<Embed>(
     _ functionCall: Item.FunctionCall,
-    generatedTranscript: inout Transcript,
-    continuation: AsyncThrowingStream<Transcript.Entry, any Error>.Continuation
-  ) async throws {
-    let generatedContent = try GeneratedContent(json: functionCall.arguments)
+    generatedTranscript: inout Transcript<Embed>,
+    continuation: AsyncThrowingStream<Transcript<Embed>.Entry, any Error>.Continuation
+  ) async throws where Embed: PromptEmbeddable {
+    let generatedContent = try FoundationGeneratedContent(json: functionCall.arguments)
 
-    let toolCall = Transcript.ToolCall(
+    let toolCall = Transcript<Embed>.ToolCall(
       callId: functionCall.callId,
       toolName: functionCall.name,
       arguments: generatedContent,
@@ -346,12 +344,12 @@ public final class OpenAIProvider: Provider {
     do {
       let output = try await callTool(tool, with: generatedContent)
 
-      let toolOutputEntry = Transcript.ToolOutput.generatedContent(
+      let toolOutputEntry = Transcript<Embed>.ToolOutput.generatedContent(
         output,
         callId: functionCall.callId,
         toolName: tool.name
       )
-      let transcriptEntry = Transcript.Entry.toolOutput(toolOutputEntry)
+      let transcriptEntry = Transcript<Embed>.Entry.toolOutput(toolOutputEntry)
 
       // Try to log as JSON if possible
       AgentLog.toolOutput(
@@ -368,11 +366,11 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  private func handleReasoning(
+  private func handleReasoning<Embed>(
     _ reasoning: Item.Reasoning,
-    generatedTranscript: inout Transcript,
-    continuation: AsyncThrowingStream<Transcript.Entry, any Error>.Continuation
-  ) async throws {
+    generatedTranscript: inout Transcript<Embed>,
+    continuation: AsyncThrowingStream<Transcript<Embed>.Entry, any Error>.Continuation
+  ) async throws where Embed: PromptEmbeddable {
     let summary = reasoning.summary.map { summary in
       switch summary {
       case let .text(text):
@@ -380,7 +378,7 @@ public final class OpenAIProvider: Provider {
       }
     }
 
-    let entryData = Transcript.Reasoning(
+    let entryData = Transcript<Embed>.Reasoning(
       summary: summary,
       encryptedReasoning: reasoning.encryptedContent,
       status: transcriptStatusFromOpenAIStatus(reasoning.status),
@@ -389,36 +387,36 @@ public final class OpenAIProvider: Provider {
 
     AgentLog.reasoning(summary: summary)
 
-    let entry = Transcript.Entry.reasoning(entryData)
+    let entry = Transcript<Embed>.Entry.reasoning(entryData)
     generatedTranscript.entries.append(entry)
     continuation.yield(entry)
   }
 
-  private func callTool<T: FoundationModels.Tool>(
-    _ tool: T,
-    with generatedContent: GeneratedContent
-  ) async throws -> T.Output where T.Output: ConvertibleToGeneratedContent {
-    let arguments = try T.Arguments(generatedContent)
+  private func callTool<Tool: FoundationTool>(
+    _ tool: Tool,
+    with generatedContent: FoundationGeneratedContent
+  ) async throws -> Tool.Output where Tool.Output: FoundationConvertibleToGeneratedContent {
+    let arguments = try Tool.Arguments(generatedContent)
     return try await tool.call(arguments: arguments)
   }
 
-  private func request<Content>(
-    including transcript: Transcript,
+  private func request<Content, Embeddable>(
+    including transcript: Transcript<Embeddable>,
     generating type: Content.Type,
     using model: Model,
     options: GenerationOptions
-  ) -> OpenAI.Request where Content: Generable {
+  ) -> OpenAI.Request where Content: FoundationGenerable, Embeddable: PromptEmbeddable {
     let textConfig: TextConfig? = {
       if type == String.self {
         return nil
       }
-      
+
       let format = TextConfig.Format.generationSchema(
         schema: type.generationSchema,
         name: snakeCaseName(for: type),
         strict: false
       )
-      
+
       return TextConfig(format: format)
     }()
 
@@ -445,7 +443,9 @@ public final class OpenAIProvider: Provider {
 
   // MARK: - Helpers
 
-  private func transcriptStatusFromOpenAIStatus(_ status: Message.Status) -> Transcript.Status {
+  private func transcriptStatusFromOpenAIStatus<Embed>(
+    _ status: Message.Status
+  ) -> Transcript<Embed>.Status where Embed: PromptEmbeddable {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -453,7 +453,9 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  private func transcriptStatusFromOpenAIStatus(_ status: Item.FunctionCall.Status) -> Transcript.Status {
+  private func transcriptStatusFromOpenAIStatus<Embed>(
+    _ status: Item.FunctionCall.Status
+  ) -> Transcript<Embed>.Status where Embed: PromptEmbeddable {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -461,7 +463,9 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  private func transcriptStatusFromOpenAIStatus(_ status: Item.Reasoning.Status?) -> Transcript.Status? {
+  private func transcriptStatusFromOpenAIStatus<Embed>(
+    _ status: Item.Reasoning.Status?
+  ) -> Transcript<Embed>.Status? where Embed: PromptEmbeddable {
     guard let status else { return nil }
 
     switch status {
@@ -471,7 +475,9 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  private func transcriptStatusToMessageStatus(_ status: Transcript.Status) -> Message.Status {
+  private func transcriptStatusToMessageStatus<Embed>(
+    _ status: Transcript<Embed>.Status
+  ) -> Message.Status where Embed: PromptEmbeddable {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -479,7 +485,9 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  private func transcriptStatusToFunctionCallStatus(_ status: Transcript.Status) -> Item.FunctionCall.Status {
+  private func transcriptStatusToFunctionCallStatus<Embed>(
+    _ status: Transcript<Embed>.Status
+  ) -> Item.FunctionCall.Status where Embed: PromptEmbeddable {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -487,7 +495,9 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  private func transcriptStatusToReasoningStatus(_ status: Transcript.Status?) -> Item.Reasoning.Status? {
+  private func transcriptStatusToReasoningStatus<Embed>(
+    _ status: Transcript<Embed>.Status?
+  ) -> Item.Reasoning.Status? where Embed: PromptEmbeddable {
     guard let status else { return nil }
 
     switch status {
@@ -497,7 +507,7 @@ public final class OpenAIProvider: Provider {
     }
   }
 
-  func transcriptToListItems(_ transcript: Transcript) -> [Input.ListItem] {
+  func transcriptToListItems<Embed>(_ transcript: Transcript<Embed>) -> [Input.ListItem] where Embed: PromptEmbeddable {
     var listItems: [Input.ListItem] = []
 
     for entry in transcript.entries {
@@ -583,7 +593,7 @@ func snakeCaseName<T>(for type: T.Type) -> String {
   }
 }
 
-extension OpenAI.Model: ProviderModel {
+extension OpenAI.Model: AdapterModel {
   public static var `default`: Self {
     .gpt5
   }

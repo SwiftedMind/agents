@@ -44,11 +44,11 @@ import SwiftAgent
 import FoundationModels
 
 // Configure your provider
-let config = OpenAIProvider.Configuration.direct(apiKey: "your-api-key")
-OpenAIProvider.Configuration.setDefaultConfiguration(config)
+let config = OpenAIAdapter.Configuration.direct(apiKey: "your-api-key")
+OpenAIAdapter.Configuration.setDefaultConfiguration(config)
 
 // Create an agent with tools
-let agent = Agent<OpenAIProvider>(
+let agent = Agent<OpenAIAdapter>(
   tools: [WeatherTool(), CalculatorTool()],
   instructions: "You are a helpful assistant."
 )
@@ -179,15 +179,15 @@ for entry in agent.transcript.entries {
 
 ```swift
 // Direct API key
-let config = OpenAIProvider.Configuration.direct(apiKey: "sk-...")
+let config = OpenAIAdapter.Configuration.direct(apiKey: "sk-...")
 
 // Custom endpoint
-let config = OpenAIProvider.Configuration.custom(
+let config = OpenAIAdapter.Configuration.custom(
   apiKey: "sk-...",
   baseURL: URL(string: "https://api.custom-openai.com")!
 )
 
-OpenAIProvider.Configuration.setDefaultConfiguration(config)
+OpenAIAdapter.Configuration.setDefaultConfiguration(config)
 ```
 
 ### Logging

@@ -3,6 +3,6 @@
 import Foundation
 import OSLog
 
-extension Logger {
+package extension Logger {
   nonisolated(unsafe) static var main: Logger = .init(OSLog.disabled)
 }

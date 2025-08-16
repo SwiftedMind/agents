@@ -3,7 +3,7 @@
 import Foundation
 import FoundationModels
 
-public struct Transcript<Metadata: ProviderMetadata>: Sendable, Equatable {
+public struct Transcript<Metadata: AdapterMetadata, Embed: PromptEmbeddable>: Sendable, Equatable {
   public var entries: [Entry]
 
   public init(entries: [Entry] = []) {
@@ -38,38 +38,23 @@ public extension Transcript {
   struct Prompt: Sendable, Identifiable, Equatable {
     public var id: String
     public var content: String
+    public var embeds: [Embed]
     public var options: GenerationOptions
-    public var responseFormat: Transcript.ResponseFormat?
-
-    public init(
+    
+    package var embeddedPrompt: String
+    
+    package init(
       id: String = UUID().uuidString,
       content: String,
-      options: GenerationOptions = .init(),
-      responseFormat: Transcript.ResponseFormat?
+      embeds: [Embed] = [],
+      embeddedPrompt: String,
+      options: GenerationOptions = .init()
     ) {
       self.id = id
       self.content = content
+      self.embeds = embeds
+      self.embeddedPrompt = embeddedPrompt
       self.options = options
-      self.responseFormat = responseFormat
-    }
-  }
-
-  struct ResponseFormat: Sendable, Equatable {
-    public var name: String
-    private var schema: GenerationSchema
-
-    public init<Content>(type: Content.Type, name: String) where Content: Generable {
-      self.name = name
-      schema = type.generationSchema
-    }
-
-    public init(schema: GenerationSchema, name: String) {
-      self.name = name
-      self.schema = schema
-    }
-
-    public static func == (a: Transcript.ResponseFormat, b: Transcript.ResponseFormat) -> Bool {
-      a.name == b.name
     }
   }
 
@@ -230,9 +215,9 @@ public extension Transcript {
 public extension Transcript {
   struct ToolResolver<Envelope> {
     private let toolsByName: [String: any AgentTool<Envelope>]
-    private let transcriptToolOutputs: [Transcript<Metadata>.ToolOutput]
+    private let transcriptToolOutputs: [Transcript<Metadata, Embed>.ToolOutput]
 
-    init(tools: [any AgentTool<Envelope>], in transcript: Transcript<Metadata>) {
+    init(tools: [any AgentTool<Envelope>], in transcript: Transcript<Metadata, Embed>) {
       toolsByName = Dictionary(uniqueKeysWithValues: tools.map { ($0.name, $0) })
       transcriptToolOutputs = transcript.entries.compactMap { entry in
         switch entry {
@@ -244,7 +229,7 @@ public extension Transcript {
       }
     }
 
-    public func envelope(for call: Transcript<Metadata>.ToolCall) throws -> Envelope {
+    public func envelope(for call: Transcript<Metadata, Embed>.ToolCall) throws -> Envelope {
       guard let tool = toolsByName[call.toolName] else {
         throw ToolResolutionError.unknownTool(name: call.toolName)
       }
