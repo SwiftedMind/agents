@@ -218,3 +218,56 @@ public extension Transcript {
     }
   }
 }
+
+// MARK: - Tool Resolver
+
+public extension Transcript {
+  func toolResolver<Envelope>(for tools: [any AgentTool<Envelope>]) -> ToolResolver<Envelope> {
+    ToolResolver(tools: tools, in: self)
+  }
+}
+
+public extension Transcript {
+  struct ToolResolver<Envelope> {
+    private let toolsByName: [String: any AgentTool<Envelope>]
+    private let transcriptToolOutputs: [Transcript<Metadata>.ToolOutput]
+
+    init(tools: [any AgentTool<Envelope>], in transcript: Transcript<Metadata>) {
+      toolsByName = Dictionary(uniqueKeysWithValues: tools.map { ($0.name, $0) })
+      transcriptToolOutputs = transcript.entries.compactMap { entry in
+        switch entry {
+        case let .toolOutput(toolOutput):
+          return toolOutput
+        default:
+          return nil
+        }
+      }
+    }
+
+    public func envelope(for call: Transcript<Metadata>.ToolCall) throws -> Envelope {
+      guard let tool = toolsByName[call.toolName] else {
+        throw ToolResolutionError.unknownTool(name: call.toolName)
+      }
+
+      let output = findOutput(for: call.id)
+      return try tool.envelope(arguments: call.arguments, output: output)
+    }
+
+    private func findOutput(for callId: String) -> GeneratedContent? {
+      guard let toolOutput = transcriptToolOutputs.first(where: { $0.callId == callId }) else {
+        return nil
+      }
+
+      switch toolOutput.segment {
+      case let .text(text):
+        return GeneratedContent(text.content)
+      case let .structure(structure):
+        return structure.content
+      }
+    }
+  }
+
+  enum ToolResolutionError: Error, Sendable, Equatable {
+    case unknownTool(name: String)
+  }
+}
