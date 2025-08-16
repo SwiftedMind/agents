@@ -37,11 +37,8 @@ public extension Transcript {
 
   struct Prompt: Sendable, Identifiable, Equatable {
     public var id: String
-
     public var content: String
-
     public var options: GenerationOptions
-
     public var responseFormat: Transcript.ResponseFormat?
 
     public init(
