@@ -5,24 +5,18 @@ import FoundationModels
 
 // MARK: - AgentTool
 
-public protocol AgentTool<Envelope>: FoundationModels.Tool, Encodable
+public protocol AgentTool<ResolvedToolRun>: FoundationModels.Tool, Encodable
   where Output: ConvertibleToGeneratedContent, Output: ConvertibleFromGeneratedContent {
-  /// App-defined wrapper used to *group* tool variants and *house* a tool run. If you don't need
-  /// grouping or dispatch, you can rely on the provided `DefaultAgentToolEnvelope`.
-  associatedtype Envelope = DefaultAgentToolEnvelope
+  associatedtype ResolvedToolRun = Void
 
-  /// Produce the tool's grouping wrapper (the `Envelope`) for a given tool invocation.
-  ///
-  /// In apps, this commonly returns an enum case such as `.readMemory(run)` that carries the
-  /// `AgentToolRun<Self>` so handlers have compile-time access to `arguments` and the `output` of the tool run.
-  func envelope(for run: AgentToolRun<Self>) -> Envelope
+  func resolve(_ run: AgentToolRun<Self>) -> ResolvedToolRun
 }
 
 public extension AgentTool {
   private var toolType: Self.Type { Self.self }
 
-  func envelope(arguments: GeneratedContent, output: GeneratedContent?) throws -> Envelope {
-    try envelope(for: run(for: arguments, output: output))
+  func resolvedTool(arguments: GeneratedContent, output: GeneratedContent?) throws -> ResolvedToolRun {
+    try resolve(run(for: arguments, output: output))
   }
 
   private func run(for arguments: GeneratedContent, output: GeneratedContent?) throws -> AgentToolRun<Self> {
@@ -42,27 +36,14 @@ public extension AgentTool {
   }
 }
 
-// MARK: - Default Envelope
-
-/// An empty, no-op envelope for tools that do not participate in app-level routing/grouping.
-///
-/// If your app doesn't need a custom envelope, conformers can use this default and get an
-/// implementation of `envelope(for:)` for free.
-public struct DefaultAgentToolEnvelope {}
-
-public extension AgentTool where Envelope == DefaultAgentToolEnvelope {
-  func envelope(for run: AgentToolRun<Self>) -> DefaultAgentToolEnvelope {
-    DefaultAgentToolEnvelope()
+public extension AgentTool where ResolvedToolRun == Void {
+  func resolve(_ run: AgentToolRun<Self>) -> Void {
+    Void()
   }
 }
 
 // MARK: - AgentToolRun
 
-/// A value describing one tool invocation: the input `arguments` plus an optional `output`.
-///
-/// - You can construct a run with only `arguments` (pre-execution) and attach `output` later, or
-///   construct it with both after execution.
-/// - `AgentToolRun` is used by envelopes to carry a concrete call through your app's routing layer.
 public struct AgentToolRun<Tool: AgentTool> {
   /// The strongly typed inputs for this invocation.
   public let arguments: Tool.Arguments

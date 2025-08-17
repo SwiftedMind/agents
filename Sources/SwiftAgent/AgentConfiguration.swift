@@ -2,7 +2,6 @@
 
 import Foundation
 import OSLog
-import SwiftAgentNetworking
 
 public enum AgentConfiguration {
   /// Enables or disables logging for the SDK.

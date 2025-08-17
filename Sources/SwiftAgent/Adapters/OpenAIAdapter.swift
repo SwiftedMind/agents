@@ -1,6 +1,5 @@
 // By Dennis Müller
 
-import Core
 import Foundation
 import FoundationModels
 import Internal

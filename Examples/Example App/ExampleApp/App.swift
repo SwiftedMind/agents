@@ -10,14 +10,6 @@ enum PromptContext: String, SwiftAgent.PromptContext, SwiftAgent.PromptRepresent
   case b = "B"
 }
 
-enum PrimaryToolEnvelope {
-  case getFavoriteNumbers(AgentToolRun<GetFavoriteNumbersTool>)
-}
-
-enum AgentToolGroup {
-  case getFavoriteNumbers(AgentToolRun<GetFavoriteNumbersTool>)
-}
-
 @main
 struct ExampleApp: App {
   init() {}
@@ -27,14 +19,25 @@ struct ExampleApp: App {
       RootView()
         .task {
           do {
+            let tools: [any AgentTool] = [GetFavoriteNumbersTool()]
+            let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
+            
+            let output = try await agent.respond(to: "Give me my 5 favorite numbers")
+            print(output)
+          } catch {
+            
+          }
+        }
+        .task {
+          do {
             let configuration = OpenAIAdapter.Configuration.direct(apiKey: Secret.OpenAI.apiKey)
             OpenAIAdapter.Configuration.setDefaultConfiguration(configuration)
 
             AgentConfiguration.setLoggingEnabled(true)
             AgentConfiguration.setNetworkLoggingEnabled(true)
 
-            // [any AgentTool] is sufficient if you don't need envelopes (aka groupings)
-            let tools: [any AgentTool<PrimaryToolEnvelope>] = [GetFavoriteNumbersTool()]
+            // [any AgentTool] is sufficient if you don't need tool resolution
+            let tools: [any AgentTool<ResolvedToolRun>] = [GetFavoriteNumbersTool()]
 
             let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
 
@@ -46,13 +49,13 @@ struct ExampleApp: App {
             // Example of using the transcript resolver
 
             let toolResolver = agent.transcript.toolResolver(for: tools)
-            var envelopes: [PrimaryToolEnvelope] = []
+            var resolvedTools: [ResolvedToolRun] = []
 
             for entry in agent.transcript.entries {
               switch entry {
               case let .toolCalls(toolCalls):
                 for toolCall in toolCalls.calls {
-                  try envelopes.append(toolResolver.envelope(for: toolCall))
+                  try resolvedTools.append(toolResolver.resolve(toolCall))
                 }
               default:
                 break
@@ -61,8 +64,8 @@ struct ExampleApp: App {
             }
 
             // Now we have type-safe, easy access to any tool runs, which is useful for passing it to the UI
-            for envelope in envelopes {
-              switch envelope {
+            for resolvedTool in resolvedTools {
+              switch resolvedTool {
               case let .getFavoriteNumbers(run):
                 _ = run.arguments.count
                 
@@ -112,8 +115,12 @@ struct GetFavoriteNumbersTool: AgentTool {
     return output
   }
 
-  /// Only required to implement when you want to use envelopes (type-safe tool groupings wrapping tool runs)
-  func envelope(for run: AgentToolRun<GetFavoriteNumbersTool>) -> PrimaryToolEnvelope {
+  /// Only required to implement when you want to resolve tool runs in the transcript (type-safe tool groupings wrapping tool runs)
+  func resolve(_ run: AgentToolRun<GetFavoriteNumbersTool>) -> ResolvedToolRun {
     .getFavoriteNumbers(run)
   }
+}
+
+enum ResolvedToolRun {
+  case getFavoriteNumbers(AgentToolRun<GetFavoriteNumbersTool>)
 }
