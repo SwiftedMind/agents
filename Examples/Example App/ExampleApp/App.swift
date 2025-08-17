@@ -21,12 +21,10 @@ struct ExampleApp: App {
           do {
             let tools: [any AgentTool] = [GetFavoriteNumbersTool()]
             let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
-            
+
             let output = try await agent.respond(to: "Give me my 5 favorite numbers")
             print(output)
-          } catch {
-            
-          }
+          } catch {}
         }
         .task {
           do {
@@ -68,7 +66,7 @@ struct ExampleApp: App {
               switch resolvedTool {
               case let .getFavoriteNumbers(run):
                 _ = run.arguments.count
-                
+
                 if let output = run.output {
                   _ = output.numbers
                 }
