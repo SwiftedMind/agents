@@ -17,7 +17,7 @@ public struct AgentToolResolver<Metadata: AdapterMetadata, Context: PromptContex
 
   init(tools: [any AgentTool<ResolvedToolRun>], in transcript: AgentTranscript<Metadata, Context>) {
     toolsByName = Dictionary(uniqueKeysWithValues: tools.map { ($0.name, $0) })
-    transcriptToolOutputs = transcript.entries.compactMap { entry in
+    transcriptToolOutputs = transcript.compactMap { entry in
       switch entry {
       case let .toolOutput(toolOutput):
         return toolOutput

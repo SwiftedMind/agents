@@ -58,7 +58,7 @@
   // Use the tool resolver in your UI code
   let toolResolver = agent.transcript.toolResolver(for: tools)
   
-  for entry in agent.transcript.entries {
+  for entry in agent.transcript {
     if case let .toolCalls(toolCalls) = entry {
       for toolCall in toolCalls.calls {
         let resolvedTool = try toolResolver.resolve(toolCall)

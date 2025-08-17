@@ -512,7 +512,7 @@ public final class OpenAIAdapter: AgentAdapter {
   func transcriptToListItems<Context>(_ transcript: Transcript<Context>) -> [Input.ListItem] where Context: PromptContext {
     var listItems: [Input.ListItem] = []
 
-    for entry in transcript.entries {
+    for entry in transcript {
       switch entry {
       case let .prompt(prompt):
         listItems.append(Input.ListItem.message(role: .user, content: .text(prompt.embeddedPrompt)))
@@ -526,7 +526,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
         listItems.append(Input.ListItem.item(.reasoning(item)))
       case let .toolCalls(toolCalls):
-        for toolCall in toolCalls.calls {
+        for toolCall in toolCalls {
           let item = Item.FunctionCall(
             arguments: toolCall.arguments.jsonString,
             callId: toolCall.callId,

@@ -169,7 +169,7 @@ let response = try await agent.respond(
 }
 
 // The transcript now clearly separates user input from augmented context
-for entry in agent.transcript.entries {
+for entry in agent.transcript {
   if case let .prompt(prompt) = entry {
     print("User input: \(prompt.content)")
     print("Context items: \(prompt.context.count)")
@@ -202,9 +202,9 @@ let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
 // After the agent runs, resolve tool calls for UI display
 let toolResolver = agent.transcript.toolResolver(for: tools)
 
-for entry in agent.transcript.entries {
+for entry in agent.transcript {
   if case let .toolCalls(toolCalls) = entry {
-    for toolCall in toolCalls.calls {
+    for toolCall in toolCalls {
       let resolvedTool = try toolResolver.resolve(toolCall)
       
       switch resolvedTool {
@@ -300,7 +300,7 @@ Access full conversation transcripts:
 try await agent.respond(to: "What was my first question?")
 
 // Access conversation history
-for entry in agent.transcript.entries {
+for entry in agent.transcript {
   switch entry {
   case .prompt(let prompt):
     print("User: \(prompt.content)")
