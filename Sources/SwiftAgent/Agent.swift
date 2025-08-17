@@ -15,9 +15,9 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
   public var transcript: Transcript
 
   // MARK: - Initializers
-  
+
   // MARK: Generic Initializers
-  
+
   public init(
     using adapter: Adapter.Type,
     supplying context: Context.Type,
@@ -28,7 +28,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
     transcript = Transcript()
     self.adapter = Adapter(tools: tools, instructions: instructions, configuration: configuration)
   }
-  
+
   public init(
     using adapter: Adapter.Type,
     tools: [any AgentTool] = [],
@@ -38,9 +38,9 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
     transcript = Transcript()
     self.adapter = Adapter(tools: tools, instructions: instructions, configuration: configuration)
   }
-  
+
   // MARK: OpenAI Initializers
-  
+
   public init(
     supplying context: Context.Type,
     tools: [any AgentTool] = [],
@@ -48,18 +48,18 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
     configuration: Adapter.Configuration = .default
   ) where Adapter == OpenAIAdapter {
     transcript = Transcript()
-    self.adapter = Adapter(tools: tools, instructions: instructions, configuration: configuration)
+    adapter = Adapter(tools: tools, instructions: instructions, configuration: configuration)
   }
-  
+
   public init(
     tools: [any AgentTool] = [],
     instructions: String = "",
     configuration: Adapter.Configuration = .default
   ) where Adapter == OpenAIAdapter, Context == EmptyPromptContext {
     transcript = Transcript()
-    self.adapter = Adapter(tools: tools, instructions: instructions, configuration: configuration)
+    adapter = Adapter(tools: tools, instructions: instructions, configuration: configuration)
   }
-  
+
   // MARK: - Respond Methods
 
   @discardableResult
@@ -196,9 +196,10 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
   ) async throws -> Response<String> {
     let prompt = Transcript.Prompt(
       content: input,
+      context: context,
       embeddedPrompt: prompt(input, context).formatted()
     )
-    
+
     let promptEntry = Transcript.Entry.prompt(prompt)
     transcript.entries.append(promptEntry)
 
@@ -237,7 +238,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
   ) async throws -> Response<Content> where Content: Generable {
     let prompt = Transcript.Prompt(
       content: input,
-      embeddables: context,
+      context: context,
       embeddedPrompt: prompt(input, context).formatted()
     )
 
@@ -273,6 +274,8 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
     throw GenerationError.unexpectedStructuredResponse(errorContext)
   }
 }
+
+// MARK: - AgentResponse
 
 public struct AgentResponse<Adapter: AgentAdapter, Context: PromptContext, Content> where Content: Generable {
   /// The response content.

@@ -3,7 +3,7 @@
 import Foundation
 import FoundationModels
 
-public struct AgentTranscript<Metadata: AdapterMetadata, Embed: PromptContext>: Sendable, Equatable {
+public struct AgentTranscript<Metadata: AdapterMetadata, Context: PromptContext>: Sendable, Equatable {
   public var entries: [Entry]
 
   public init(entries: [Entry] = []) {
@@ -38,7 +38,7 @@ public extension AgentTranscript {
   struct Prompt: Sendable, Identifiable, Equatable {
     public var id: String
     public var content: String
-    public var embeddables: [Embed]
+    public var context: [Context]
     public var options: GenerationOptions
     
     package var embeddedPrompt: String
@@ -46,13 +46,13 @@ public extension AgentTranscript {
     package init(
       id: String = UUID().uuidString,
       content: String,
-      embeddables: [Embed] = [],
+      context: [Context] = [],
       embeddedPrompt: String,
       options: GenerationOptions = .init()
     ) {
       self.id = id
       self.content = content
-      self.embeddables = embeddables
+      self.context = context
       self.embeddedPrompt = embeddedPrompt
       self.options = options
     }
@@ -215,9 +215,9 @@ public extension AgentTranscript {
 public extension AgentTranscript {
   struct ToolResolver<Envelope> {
     private let toolsByName: [String: any AgentTool<Envelope>]
-    private let transcriptToolOutputs: [AgentTranscript<Metadata, Embed>.ToolOutput]
+    private let transcriptToolOutputs: [AgentTranscript<Metadata, Context>.ToolOutput]
 
-    init(tools: [any AgentTool<Envelope>], in transcript: AgentTranscript<Metadata, Embed>) {
+    init(tools: [any AgentTool<Envelope>], in transcript: AgentTranscript<Metadata, Context>) {
       toolsByName = Dictionary(uniqueKeysWithValues: tools.map { ($0.name, $0) })
       transcriptToolOutputs = transcript.entries.compactMap { entry in
         switch entry {
@@ -229,7 +229,7 @@ public extension AgentTranscript {
       }
     }
 
-    public func envelope(for call: AgentTranscript<Metadata, Embed>.ToolCall) throws -> Envelope {
+    public func envelope(for call: AgentTranscript<Metadata, Context>.ToolCall) throws -> Envelope {
       guard let tool = toolsByName[call.toolName] else {
         throw ToolResolutionError.unknownTool(name: call.toolName)
       }
