@@ -5,8 +5,7 @@ import FoundationModels
 
 // MARK: - AgentTool
 
-public protocol AgentTool<ResolvedToolRun>: FoundationModels.Tool, Encodable
-  where Output: ConvertibleToGeneratedContent, Output: ConvertibleFromGeneratedContent {
+public protocol AgentTool<ResolvedToolRun>: FoundationModels.Tool, Encodable where Output: ConvertibleToGeneratedContent, Output: ConvertibleFromGeneratedContent {
   associatedtype ResolvedToolRun = Void
 
   func resolve(_ run: AgentToolRun<Self>) -> ResolvedToolRun
@@ -37,8 +36,8 @@ public extension AgentTool {
 }
 
 public extension AgentTool where ResolvedToolRun == Void {
-  func resolve(_ run: AgentToolRun<Self>) -> Void {
-    Void()
+  func resolve(_ run: AgentToolRun<Self>) {
+    ()
   }
 }
 
