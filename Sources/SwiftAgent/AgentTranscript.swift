@@ -11,6 +11,33 @@ public struct AgentTranscript<Metadata: AdapterMetadata, Context: PromptContext>
   }
 }
 
+// MARK: - RandomAccessCollection Conformance
+
+extension AgentTranscript: RandomAccessCollection, RangeReplaceableCollection {
+  public var startIndex: Int { entries.startIndex }
+  public var endIndex: Int { entries.endIndex }
+
+  public subscript(position: Int) -> Entry {
+    entries[position]
+  }
+
+  public func index(after i: Int) -> Int {
+    entries.index(after: i)
+  }
+
+  public func index(before i: Int) -> Int {
+    entries.index(before: i)
+  }
+
+  public init() {
+    entries = []
+  }
+
+  public mutating func replaceSubrange<C>(_ subrange: Range<Int>, with newElements: C) where C: Collection, C.Element == Entry {
+    entries.replaceSubrange(subrange, with: newElements)
+  }
+}
+
 public extension AgentTranscript {
   enum Entry: Sendable, Identifiable, Equatable {
     case prompt(Prompt)
@@ -40,9 +67,9 @@ public extension AgentTranscript {
     public var content: String
     public var context: [Context]
     public var options: GenerationOptions
-    
+
     package var embeddedPrompt: String
-    
+
     package init(
       id: String = UUID().uuidString,
       content: String,
@@ -97,7 +124,37 @@ public extension AgentTranscript {
       self.calls = calls
     }
   }
+}
 
+// MARK: - ToolCalls RandomAccessCollection Conformance
+
+extension AgentTranscript.ToolCalls: RandomAccessCollection, RangeReplaceableCollection {
+  public var startIndex: Int { calls.startIndex }
+  public var endIndex: Int { calls.endIndex }
+
+  public subscript(position: Int) -> AgentTranscript<Metadata, Context>.ToolCall {
+    calls[position]
+  }
+
+  public func index(after i: Int) -> Int {
+    calls.index(after: i)
+  }
+
+  public func index(before i: Int) -> Int {
+    calls.index(before: i)
+  }
+
+  public init() {
+    id = UUID().uuidString
+    calls = []
+  }
+
+  public mutating func replaceSubrange<C>(_ subrange: Range<Int>, with newElements: C) where C: Collection, C.Element == AgentTranscript<Metadata, Context>.ToolCall {
+    calls.replaceSubrange(subrange, with: newElements)
+  }
+}
+
+public extension AgentTranscript {
   struct ToolCall: Sendable, Identifiable, Equatable {
     public var id: String
     public var callId: String
