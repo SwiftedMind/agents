@@ -2,6 +2,7 @@
 
 import Foundation
 import Internal
+import FoundationModels
 
 @MainActor
 public protocol AgentAdapter {
@@ -11,13 +12,13 @@ public protocol AgentAdapter {
 
   init(tools: [any AgentTool], instructions: String, configuration: Configuration)
 
-  func respond<Content, Embeddable>(
-    to prompt: Transcript<Metadata, Embeddable>.Prompt,
+  func respond<Content, Context>(
+    to prompt: AgentTranscript<Metadata, Context>.Prompt,
     generating type: Content.Type,
     using model: Model,
-    including transcript: Transcript<Metadata, Embeddable>,
+    including transcript: AgentTranscript<Metadata, Context>,
     options: GenerationOptions
-  ) -> AsyncThrowingStream<Transcript<Metadata, Embeddable>.Entry, any Error> where Content: FoundationGenerable, Embeddable: PromptEmbeddable
+  ) -> AsyncThrowingStream<AgentTranscript<Metadata, Context>.Entry, any Error> where Content: Generable, Context: PromptContext
 }
 
 // MARK: - Model

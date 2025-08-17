@@ -5,6 +5,11 @@ import OSLog
 import SwiftAgent
 import SwiftUI
 
+enum PromptContext: String, SwiftAgent.PromptContext, SwiftAgent.PromptRepresentable {
+  case a = "A"
+  case b = "B"
+}
+
 @main
 struct ExampleApp: App {
   init() {}
@@ -14,17 +19,20 @@ struct ExampleApp: App {
       RootView()
         .task {
           do {
-            let configuration = OpenAIProvider.Configuration.direct(apiKey: Secret.OpenAI.apiKey)
-            OpenAIProvider.Configuration.setDefaultConfiguration(configuration)
+            let configuration = OpenAIAdapter.Configuration.direct(apiKey: Secret.OpenAI.apiKey)
+            OpenAIAdapter.Configuration.setDefaultConfiguration(configuration)
+            
             AgentConfiguration.setLoggingEnabled(true)
+            AgentConfiguration.setNetworkLoggingEnabled(true)
 
-            let agent = Agent<OpenAIProvider>(tools: [GetFavoriteNumbers()])
-            let output = try await agent.respond(
-              to: "Give me my 5 favorite numbers",
-//              generating: NumbersOutput.self,
-              using: .gpt5
-            )
-            print("HERE RESULT: ", output.content)
+            let agent = OpenAIAgent(supplying: PromptContext.self, tools: [GetFavoriteNumbers()])
+
+            let output = try await agent.respond(to: "Give me my 5 favorite numbers", supplying: [.a, .a, .b]) { input, context in
+              PromptTag("context", items: context)
+              input
+            }
+
+            print("Result:", output.content)
           } catch {
             print("Error \(error)")
           }

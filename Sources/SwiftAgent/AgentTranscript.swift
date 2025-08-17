@@ -3,7 +3,7 @@
 import Foundation
 import FoundationModels
 
-public struct Transcript<Metadata: AdapterMetadata, Embed: PromptEmbeddable>: Sendable, Equatable {
+public struct AgentTranscript<Metadata: AdapterMetadata, Embed: PromptContext>: Sendable, Equatable {
   public var entries: [Entry]
 
   public init(entries: [Entry] = []) {
@@ -11,7 +11,7 @@ public struct Transcript<Metadata: AdapterMetadata, Embed: PromptEmbeddable>: Se
   }
 }
 
-public extension Transcript {
+public extension AgentTranscript {
   enum Entry: Sendable, Identifiable, Equatable {
     case prompt(Prompt)
     case reasoning(Reasoning)
@@ -38,7 +38,7 @@ public extension Transcript {
   struct Prompt: Sendable, Identifiable, Equatable {
     public var id: String
     public var content: String
-    public var embeds: [Embed]
+    public var embeddables: [Embed]
     public var options: GenerationOptions
     
     package var embeddedPrompt: String
@@ -46,13 +46,13 @@ public extension Transcript {
     package init(
       id: String = UUID().uuidString,
       content: String,
-      embeds: [Embed] = [],
+      embeddables: [Embed] = [],
       embeddedPrompt: String,
       options: GenerationOptions = .init()
     ) {
       self.id = id
       self.content = content
-      self.embeds = embeds
+      self.embeddables = embeddables
       self.embeddedPrompt = embeddedPrompt
       self.options = options
     }
@@ -140,7 +140,7 @@ public extension Transcript {
       ToolOutput(
         callId: callId,
         toolName: toolName,
-        segment: .structure(Transcript.StructuredSegment(content: generatedContent))
+        segment: .structure(AgentTranscript.StructuredSegment(content: generatedContent))
       )
     }
   }
@@ -206,18 +206,18 @@ public extension Transcript {
 
 // MARK: - Tool Resolver
 
-public extension Transcript {
+public extension AgentTranscript {
   func toolResolver<Envelope>(for tools: [any AgentTool<Envelope>]) -> ToolResolver<Envelope> {
     ToolResolver(tools: tools, in: self)
   }
 }
 
-public extension Transcript {
+public extension AgentTranscript {
   struct ToolResolver<Envelope> {
     private let toolsByName: [String: any AgentTool<Envelope>]
-    private let transcriptToolOutputs: [Transcript<Metadata, Embed>.ToolOutput]
+    private let transcriptToolOutputs: [AgentTranscript<Metadata, Embed>.ToolOutput]
 
-    init(tools: [any AgentTool<Envelope>], in transcript: Transcript<Metadata, Embed>) {
+    init(tools: [any AgentTool<Envelope>], in transcript: AgentTranscript<Metadata, Embed>) {
       toolsByName = Dictionary(uniqueKeysWithValues: tools.map { ($0.name, $0) })
       transcriptToolOutputs = transcript.entries.compactMap { entry in
         switch entry {
@@ -229,7 +229,7 @@ public extension Transcript {
       }
     }
 
-    public func envelope(for call: Transcript<Metadata, Embed>.ToolCall) throws -> Envelope {
+    public func envelope(for call: AgentTranscript<Metadata, Embed>.ToolCall) throws -> Envelope {
       guard let tool = toolsByName[call.toolName] else {
         throw ToolResolutionError.unknownTool(name: call.toolName)
       }
