@@ -371,6 +371,7 @@ public final class OpenAIAdapter: AgentAdapter {
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
   ) async throws where Context: PromptContext {
+    // TODO: Always empty for some reason
     let summary = reasoning.summary.map { summary in
       switch summary {
       case let .text(text):
@@ -426,6 +427,7 @@ public final class OpenAIAdapter: AgentAdapter {
       include: model.isReasoning ? [.encryptedReasoning] : nil,
       instructions: instructions,
       maxOutputTokens: options.maximumResponseTokens,
+      reasoning: ReasoningConfig(effort: .low, summary: .detailed),
       safetyIdentifier: "",
       store: false,
       temperature: model.isReasoning ? nil : options.temperature,
