@@ -14,70 +14,29 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
 
   public var transcript: Transcript
 
-  // MARK: - Initializers
-
-  // MARK: Generic Initializers
-
-  public init(
-    using adapter: Adapter.Type,
-    supplying context: Context.Type,
-    tools: [any AgentTool] = [],
-    instructions: String = "",
-    configuration: Adapter.Configuration = .default
-  ) {
+  /// Shared initialization logic used by all public initializers
+  init(adapter: Adapter) {
     transcript = Transcript()
-    self.adapter = Adapter(tools: tools, instructions: instructions, configuration: configuration)
+    self.adapter = adapter
   }
 
-  public init(
-    using adapter: Adapter.Type,
-    tools: [any AgentTool] = [],
-    instructions: String = "",
-    configuration: Adapter.Configuration = .default
-  ) where Context == EmptyPromptContext {
-    transcript = Transcript()
-    self.adapter = Adapter(tools: tools, instructions: instructions, configuration: configuration)
-  }
+  // MARK: - Private Response Helpers
 
-  // MARK: OpenAI Initializers
-
-  public init(
-    supplying context: Context.Type,
-    tools: [any AgentTool] = [],
-    instructions: String = "",
-    configuration: Adapter.Configuration = .default
-  ) where Adapter == OpenAIAdapter {
-    transcript = Transcript()
-    adapter = Adapter(tools: tools, instructions: instructions, configuration: configuration)
-  }
-
-  public init(
-    tools: [any AgentTool] = [],
-    instructions: String = "",
-    configuration: Adapter.Configuration = .default
-  ) where Adapter == OpenAIAdapter, Context == EmptyPromptContext {
-    transcript = Transcript()
-    adapter = Adapter(tools: tools, instructions: instructions, configuration: configuration)
-  }
-
-  // MARK: - Respond Methods
-
-  @discardableResult
-  public func respond(
-    to prompt: String,
-    using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions()
+  /// Processes a stream response for String content
+  private func processStringResponse(
+    from prompt: Transcript.Prompt,
+    using model: Adapter.Model,
+    options: GenerationOptions
   ) async throws -> Response<String> {
-    let prompt = Transcript.Prompt(content: prompt, embeddedPrompt: prompt)
     let promptEntry = Transcript.Entry.prompt(prompt)
-    transcript.entries.append(promptEntry)
+    transcript.append(promptEntry)
 
     let stream = adapter.respond(to: prompt, generating: String.self, using: model, including: transcript, options: options)
     var responseContent = ""
     var addedEntities: [Transcript.Entry] = []
 
     for try await entry in stream {
-      transcript.entries.append(entry)
+      transcript.append(entry)
       addedEntities.append(entry)
 
       if case let .response(response) = entry {
@@ -96,40 +55,21 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
     return AgentResponse<Adapter, Context, String>(content: responseContent, addedEntries: addedEntities)
   }
 
-  @discardableResult
-  public func respond(
-    to prompt: Prompt,
-    using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions()
-  ) async throws -> Response<String> {
-    try await respond(to: prompt.formatted(), using: model, options: options)
-  }
-
-  @discardableResult
-  public func respond(
-    using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions(),
-    @PromptBuilder prompt: () throws -> Prompt
-  ) async throws -> Response<String> {
-    try await respond(to: prompt().formatted(), using: model, options: options)
-  }
-
-  @discardableResult
-  public func respond<Content>(
-    to prompt: String,
-    generating type: Content.Type = Content.self,
-    using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions()
+  /// Processes a stream response for structured content
+  private func processStructuredResponse<Content>(
+    from prompt: Transcript.Prompt,
+    generating type: Content.Type,
+    using model: Adapter.Model,
+    options: GenerationOptions
   ) async throws -> Response<Content> where Content: Generable {
-    let prompt = Transcript.Prompt(content: prompt, embeddedPrompt: prompt)
     let promptEntry = Transcript.Entry.prompt(prompt)
-    transcript.entries.append(promptEntry)
+    transcript.append(promptEntry)
 
     let stream = adapter.respond(to: prompt, generating: type, using: model, including: transcript, options: options)
     var addedEntities: [Transcript.Entry] = []
 
     for try await entry in stream {
-      transcript.entries.append(entry)
+      transcript.append(entry)
       addedEntities.append(entry)
 
       if case let .response(response) = entry {
@@ -153,9 +93,100 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
     let errorContext = GenerationError.UnexpectedStructuredResponseContext()
     throw GenerationError.unexpectedStructuredResponse(errorContext)
   }
+}
+
+// MARK: - Agent + Initializers
+
+public extension Agent {
+  // MARK: Generic Initializers
+
+  convenience init(
+    using adapter: Adapter.Type,
+    supplying context: Context.Type,
+    tools: [any AgentTool] = [],
+    instructions: String = "",
+    configuration: Adapter.Configuration = .default
+  ) {
+    self.init(adapter: Adapter(tools: tools, instructions: instructions, configuration: configuration))
+  }
+
+  convenience init(
+    using adapter: Adapter.Type,
+    tools: [any AgentTool] = [],
+    instructions: String = "",
+    configuration: Adapter.Configuration = .default
+  ) where Context == EmptyPromptContext {
+    self.init(adapter: Adapter(tools: tools, instructions: instructions, configuration: configuration))
+  }
+
+  // MARK: OpenAI Initializers
+
+  convenience init(
+    supplying context: Context.Type,
+    tools: [any AgentTool] = [],
+    instructions: String = "",
+    configuration: Adapter.Configuration = .default
+  ) where Adapter == OpenAIAdapter {
+    self.init(adapter: Adapter(tools: tools, instructions: instructions, configuration: configuration))
+  }
+
+  convenience init(
+    tools: [any AgentTool] = [],
+    instructions: String = "",
+    configuration: Adapter.Configuration = .default
+  ) where Adapter == OpenAIAdapter, Context == EmptyPromptContext {
+    self.init(adapter: Adapter(tools: tools, instructions: instructions, configuration: configuration))
+  }
+}
+
+// MARK: - Agent + String Responses
+
+public extension Agent {
+  @discardableResult
+  func respond(
+    to prompt: String,
+    using model: Adapter.Model = .default,
+    options: GenerationOptions = GenerationOptions()
+  ) async throws -> Response<String> {
+    let prompt = Transcript.Prompt(content: prompt, embeddedPrompt: prompt)
+    return try await processStringResponse(from: prompt, using: model, options: options)
+  }
 
   @discardableResult
-  public func respond<Content>(
+  func respond(
+    to prompt: Prompt,
+    using model: Adapter.Model = .default,
+    options: GenerationOptions = GenerationOptions()
+  ) async throws -> Response<String> {
+    try await respond(to: prompt.formatted(), using: model, options: options)
+  }
+
+  @discardableResult
+  func respond(
+    using model: Adapter.Model = .default,
+    options: GenerationOptions = GenerationOptions(),
+    @PromptBuilder prompt: () throws -> Prompt
+  ) async throws -> Response<String> {
+    try await respond(to: prompt().formatted(), using: model, options: options)
+  }
+}
+
+// MARK: - Agent + Generic Responses
+
+public extension Agent {
+  @discardableResult
+  func respond<Content>(
+    to prompt: String,
+    generating type: Content.Type = Content.self,
+    using model: Adapter.Model = .default,
+    options: GenerationOptions = GenerationOptions()
+  ) async throws -> Response<Content> where Content: Generable {
+    let prompt = Transcript.Prompt(content: prompt, embeddedPrompt: prompt)
+    return try await processStructuredResponse(from: prompt, generating: type, using: model, options: options)
+  }
+
+  @discardableResult
+  func respond<Content>(
     to prompt: Prompt,
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
@@ -170,7 +201,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
   }
 
   @discardableResult
-  public func respond<Content>(
+  func respond<Content>(
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
     options: GenerationOptions = GenerationOptions(),
@@ -183,11 +214,13 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
       options: options
     )
   }
+}
 
-  // MARK: - Response with Prompt Context
+// MARK: - Agent + Context Responses
 
+public extension Agent {
   @discardableResult
-  public func respond(
+  func respond(
     to input: String,
     supplying context: [Context],
     using model: Adapter.Model = .default,
@@ -199,36 +232,11 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
       context: context,
       embeddedPrompt: prompt(input, context).formatted()
     )
-
-    let promptEntry = Transcript.Entry.prompt(prompt)
-    transcript.entries.append(promptEntry)
-
-    let stream = adapter.respond(to: prompt, generating: String.self, using: model, including: transcript, options: options)
-    var responseContent = ""
-    var addedEntities: [Transcript.Entry] = []
-
-    for try await entry in stream {
-      transcript.entries.append(entry)
-      addedEntities.append(entry)
-
-      if case let .response(response) = entry {
-        for segment in response.segments {
-          switch segment {
-          case let .text(textSegment):
-            responseContent += "\n\n" + textSegment.content
-          case .structure:
-            // Not applicable here
-            break
-          }
-        }
-      }
-    }
-
-    return AgentResponse<Adapter, Context, String>(content: responseContent, addedEntries: addedEntities)
+    return try await processStringResponse(from: prompt, using: model, options: options)
   }
 
   @discardableResult
-  public func respond<Content>(
+  func respond<Content>(
     to input: String,
     supplying context: [Context],
     generating type: Content.Type = Content.self,
@@ -241,37 +249,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
       context: context,
       embeddedPrompt: prompt(input, context).formatted()
     )
-
-    let promptEntry = Transcript.Entry.prompt(prompt)
-    transcript.entries.append(promptEntry)
-
-    let stream = adapter.respond(to: prompt, generating: type, using: model, including: transcript, options: options)
-    var addedEntities: [Transcript.Entry] = []
-
-    for try await entry in stream {
-      transcript.entries.append(entry)
-      addedEntities.append(entry)
-
-      if case let .response(response) = entry {
-        for segment in response.segments {
-          switch segment {
-          case .text:
-            // Not applicable here
-            break
-          case let .structure(structuredSegment):
-            // We can return here since a structured response can only happen once
-            // TODO: Handle errors here in some way
-            return try AgentResponse<Adapter, Context, Content>(
-              content: Content(structuredSegment.content),
-              addedEntries: addedEntities
-            )
-          }
-        }
-      }
-    }
-
-    let errorContext = GenerationError.UnexpectedStructuredResponseContext()
-    throw GenerationError.unexpectedStructuredResponse(errorContext)
+    return try await processStructuredResponse(from: prompt, generating: type, using: model, options: options)
   }
 }
 
