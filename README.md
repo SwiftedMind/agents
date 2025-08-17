@@ -5,9 +5,30 @@
 
 **Native Swift SDK for building autonomous AI agents with Apple's FoundationModels design philosophy**
 
-SwiftAgent simplifies AI agent development by providing a clean, intuitive API that handles all the complexity of agent loops, tool execution, and provider communication. Inspired by Apple's FoundationModels framework, it brings the same elegant, declarative approach to cross-platform AI agent development.
+SwiftAgent simplifies AI agent development by providing a clean, intuitive API that handles all the complexity of agent loops, tool execution, and adapter communication. Inspired by Apple's FoundationModels framework, it brings the same elegant, declarative approach to cross-platform AI agent development.
 
 **⚠️ Work in Progress**: SwiftAgent is currently an early prototype. The basic agent loop with tool calling is already working, but there's lots of things left to implement. APIs may change, and breaking updates are expected. Use in production with caution.
+
+## Table of Contents
+
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+  - [Installation](#installation)
+  - [Basic Usage](#basic-usage)
+- [Building Tools](#️-building-tools)
+- [Advanced Usage](#-advanced-usage)
+  - [Prompt Context](#prompt-context)
+  - [Tool Resolver](#tool-resolver)
+  - [Convenience Initializers](#convenience-initializers)
+  - [Structured Output Generation](#structured-output-generation)
+  - [Custom Generation Options](#custom-generation-options)
+  - [Conversation History](#conversation-history)
+- [Configuration](#-configuration)
+  - [Adapter Setup](#adapter-setup)
+  - [Logging](#logging)
+- [Development Status](#-development-status)
+- [License](#-license)
+- [Acknowledgments](#-acknowledgments)
 
 
 ---
@@ -16,11 +37,11 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
 
 - **🎯 Zero-Setup Agent Loops** — Handle autonomous agent execution with just a few lines of code
 - **🔧 Native Tool Integration** — Use `@Generable` structs from FoundationModels as agent tools seamlessly  
-- **🌐 Provider Agnostic** — Abstract interface supports multiple AI providers (OpenAI included, more coming)
+- **🌐 Adapter Agnostic** — Abstract interface supports multiple AI adapters (OpenAI included, more coming)
 - **📱 Apple-Native Design** — API inspired by FoundationModels for familiar, intuitive development
 - **🚀 Modern Swift** — Built with Swift 6, async/await, and latest concurrency features
 - **📊 Rich Logging** — Comprehensive, human-readable logging for debugging and monitoring
-- **🎛️ Flexible Configuration** — Fine-tune generation options, tools, and provider settings
+- **🎛️ Flexible Configuration** — Fine-tune generation options, tools, and adapter settings
 
 ---
 
@@ -43,12 +64,12 @@ dependencies: [
 import SwiftAgent
 import FoundationModels
 
-// Configure your provider
+// Configure your adapter
 let config = OpenAIAdapter.Configuration.direct(apiKey: "your-api-key")
 OpenAIAdapter.Configuration.setDefaultConfiguration(config)
 
-// Create an agent with tools
-let agent = Agent<OpenAIAdapter>(
+// Create an agent with tools (using the convenient OpenAIAgent typealias)
+let agent = OpenAIAgent(
   tools: [WeatherTool(), CalculatorTool()],
   instructions: "You are a helpful assistant."
 )
@@ -103,6 +124,127 @@ struct WeatherTool: AgentTool {
 ---
 
 ## 📖 Advanced Usage
+
+### Prompt Context
+
+Separate user input from contextual information for cleaner prompt augmentation and better transcript organization:
+
+```swift
+// Define your context types
+enum PromptContext: SwiftAgent.PromptContext, SwiftAgent.PromptRepresentable {
+  case vectorEmbedding(String)
+  case documentContext(String)
+  case searchResults([String])
+  
+  @PromptBuilder
+  var promptRepresentation: Prompt {
+    switch self {
+    case .vectorEmbedding(let content):
+      PromptTag("vector-embedding") { content }
+    case .documentContext(let content):
+      PromptTag("document") { content }
+    case .searchResults(let results):
+      PromptTag("search-results") {
+        for result in results {
+          result
+        }
+      }
+    }
+  }
+}
+
+// Create an agent that supports context
+let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
+
+// Respond with context - user input and context are separated in the transcript
+let response = try await agent.respond(
+  to: "What are the key features of SwiftUI?",
+  supplying: [
+    .vectorEmbedding("SwiftUI declarative syntax..."),
+    .documentContext("Apple's official SwiftUI documentation...")
+  ]
+) { input, context in
+  PromptTag("context", items: context)
+  input
+}
+
+// The transcript now clearly separates user input from augmented context
+for entry in agent.transcript.entries {
+  if case let .prompt(prompt) = entry {
+    print("User input: \(prompt.content)")
+    print("Context items: \(prompt.context.count)")
+  }
+}
+```
+
+### Tool Resolver
+
+Get type-safe access to tool runs in your UI code by combining tool calls with their outputs:
+
+```swift
+// Define a resolved tool run enum for type-safe tool grouping
+enum ResolvedToolRun {
+  case weather(AgentToolRun<WeatherTool>)
+  case calculator(AgentToolRun<CalculatorTool>)
+}
+
+// Implement the resolve method in your tools
+extension WeatherTool {
+  func resolve(_ run: AgentToolRun<WeatherTool>) -> ResolvedToolRun {
+    .weather(run)
+  }
+}
+
+// Use the tool resolver to get compile-time safe tool access
+let tools: [any AgentTool<ResolvedToolRun>] = [WeatherTool(), CalculatorTool()]
+let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
+
+// After the agent runs, resolve tool calls for UI display
+let toolResolver = agent.transcript.toolResolver(for: tools)
+
+for entry in agent.transcript.entries {
+  if case let .toolCalls(toolCalls) = entry {
+    for toolCall in toolCalls.calls {
+      let resolvedTool = try toolResolver.resolve(toolCall)
+      
+      switch resolvedTool {
+      case let .weather(run):
+        print("Weather for: \(run.arguments.city)")
+        if let output = run.output {
+          print("Temperature: \(output.temperature)°")
+        }
+      case let .calculator(run):
+        print("Calculation: \(run.arguments.expression)")
+        if let output = run.output {
+          print("Result: \(output.result)")
+        }
+      }
+    }
+  }
+}
+```
+
+### Convenience Initializers
+
+SwiftAgent provides streamlined initializers that reduce generic complexity:
+
+```swift
+// Using the OpenAIAgent typealias (recommended)
+let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
+
+// No context needed
+let agent = OpenAIAgent(tools: tools)
+
+// Even simpler for basic usage
+let agent = OpenAIAgent()
+
+// Generic form still available for other adapters
+let agent = Agent<CustomAdapter, PromptContext>(
+  using: CustomAdapter.self,
+  supplying: PromptContext.self,
+  tools: tools
+)
+```
 
 ### Structured Output Generation
 
@@ -165,7 +307,7 @@ for entry in agent.transcript.entries {
   case .response(let response):
     print("Agent: \(response.content)")
   case .toolCalls(let calls):
-    print("Tool calls: \(calls.calls.map(\.name))")
+    print("Tool calls: \(calls.calls.map(\.toolName))")
   // ... handle other entry types
   }
 }
@@ -175,7 +317,7 @@ for entry in agent.transcript.entries {
 
 ## 🔧 Configuration
 
-### Provider Setup
+### Adapter Setup
 
 ```swift
 // Direct API key
