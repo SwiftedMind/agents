@@ -32,7 +32,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
     transcript.append(promptEntry)
 
     let stream = adapter.respond(to: prompt, generating: String.self, using: model, including: transcript, options: options)
-    var responseContent = ""
+    var responseContent: [String] = []
     var addedEntities: [Transcript.Entry] = []
 
     for try await entry in stream {
@@ -43,7 +43,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
         for segment in response.segments {
           switch segment {
           case let .text(textSegment):
-            responseContent += "\n\n" + textSegment.content
+            responseContent.append(textSegment.content)
           case .structure:
             // Not applicable here
             break
@@ -52,7 +52,10 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
       }
     }
 
-    return AgentResponse<Adapter, Context, String>(content: responseContent, addedEntries: addedEntities)
+    return AgentResponse<Adapter, Context, String>(
+      content: responseContent.joined(separator: "\n"),
+      addedEntries: addedEntities
+    )
   }
 
   /// Processes a stream response for structured content
