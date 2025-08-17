@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.4.1]
+
+### Fixed
+
+- **Agent Text Response Content Formatting**: Fixed an issue with the agent's text response content formatting that could cause malformed responses
+- **Tool Resolution**: Fixed a critical bug where tools would never be resolved due to mismatched IDs, ensuring proper tool call execution
+- **Tool Resolution Logging**: Improved logging around tool resolution to better debug tool call issues
+
+### Enhanced
+
+- **Collection Protocol Conformance**: Made `AgentTranscript` and `AgentTranscript.ToolCalls` conform to the `Collection` protocol, making it easier to access their `entries` and `calls` properties and work with them using standard Swift collection methods
+- **Logging System**: Added general logging methods and enhanced tool resolution logging for better debugging and monitoring
+- **Example App**: Added a proper, modern example app with native SwiftUI design that demonstrates the SDK's capabilities
+
+### Other
+
+- **Code Cleanup**: Minor code cleanup and formatting improvements across the codebase
+- **UI Modernization**: Redesigned example app UI with new tools and modern SwiftUI patterns
+
 ## [0.4.0]
 
 ### Breaking Changes
