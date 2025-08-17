@@ -2,6 +2,8 @@
 
 import Foundation
 import FoundationModels
+import Internal
+import OSLog
 
 // MARK: - Tool Resolver
 
@@ -11,7 +13,6 @@ public extension AgentTranscript {
   }
 }
 
-// TODO: Add logs to this in case something fails
 public struct AgentToolResolver<Metadata: AdapterMetadata, Context: PromptContext, ResolvedToolRun> {
   public typealias ToolCall = AgentTranscript<Metadata, Context>.ToolCall
 
@@ -31,12 +32,27 @@ public struct AgentToolResolver<Metadata: AdapterMetadata, Context: PromptContex
   }
 
   public func resolve(_ call: ToolCall) throws -> ResolvedToolRun {
+    AgentLog.debug("Resolving tool: \(call.toolName)", context: "Tool resolution")
+
     guard let tool = toolsByName[call.toolName] else {
+      let availableTools = toolsByName.keys.sorted().joined(separator: ", ")
+      AgentLog.error(
+        AgentToolResolutionError.unknownTool(name: call.toolName),
+        context: "Tool resolution failed. Available tools: \(availableTools)"
+      )
       throw AgentToolResolutionError.unknownTool(name: call.toolName)
     }
 
     let output = findOutput(for: call)
-    return try tool.resolvedTool(arguments: call.arguments, output: output)
+
+    do {
+      let resolvedTool = try tool.resolvedTool(arguments: call.arguments, output: output)
+      AgentLog.success("Tool resolved: \(call.toolName)", context: "Tool resolution")
+      return resolvedTool
+    } catch {
+      AgentLog.error(error, context: "Tool resolution for '\(call.toolName)'")
+      throw error
+    }
   }
 
   private func findOutput(for call: ToolCall) -> GeneratedContent? {

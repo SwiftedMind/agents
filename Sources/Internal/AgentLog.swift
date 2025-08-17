@@ -76,6 +76,32 @@ package enum AgentLog {
     )
   }
 
+  // MARK: - General Logging
+
+  /// Logs a debug message with optional context.
+  package static func debug(_ message: String, context: String? = nil) {
+    let formatted = context.map { "🔍 \($0) — \(message)" } ?? "🔍 \(message)"
+    Logger.main.debug("\(formatted, privacy: .public)")
+  }
+
+  /// Logs an informational message with optional context.
+  package static func info(_ message: String, context: String? = nil) {
+    let formatted = context.map { "ℹ️ \($0) — \(message)" } ?? "ℹ️ \(message)"
+    Logger.main.info("\(formatted, privacy: .public)")
+  }
+
+  /// Logs a success message with optional context.
+  package static func success(_ message: String, context: String? = nil) {
+    let formatted = context.map { "✅ \($0) — \(message)" } ?? "✅ \(message)"
+    Logger.main.info("\(formatted, privacy: .public)")
+  }
+
+  /// Logs a warning message with optional context.
+  package static func warning(_ message: String, context: String? = nil) {
+    let formatted = context.map { "⚠️ \($0) — \(message)" } ?? "⚠️ \(message)"
+    Logger.main.warning("\(formatted, privacy: .public)")
+  }
+
   /// Pretty-prints a JSON string if possible, otherwise returns the input.
   package static func pretty(json: String) -> String {
     guard let data = json.data(using: .utf8) else { return json }
