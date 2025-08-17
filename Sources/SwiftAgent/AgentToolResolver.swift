@@ -11,7 +11,10 @@ public extension AgentTranscript {
   }
 }
 
+// TODO: Add logs to this in case something fails
 public struct AgentToolResolver<Metadata: AdapterMetadata, Context: PromptContext, ResolvedToolRun> {
+  public typealias ToolCall = AgentTranscript<Metadata, Context>.ToolCall
+
   private let toolsByName: [String: any AgentTool<ResolvedToolRun>]
   private let transcriptToolOutputs: [AgentTranscript<Metadata, Context>.ToolOutput]
 
@@ -27,17 +30,18 @@ public struct AgentToolResolver<Metadata: AdapterMetadata, Context: PromptContex
     }
   }
 
-  public func resolve(_ call: AgentTranscript<Metadata, Context>.ToolCall) throws -> ResolvedToolRun {
+  public func resolve(_ call: ToolCall) throws -> ResolvedToolRun {
     guard let tool = toolsByName[call.toolName] else {
       throw AgentToolResolutionError.unknownTool(name: call.toolName)
     }
 
-    let output = findOutput(for: call.id)
+    let output = findOutput(for: call)
     return try tool.resolvedTool(arguments: call.arguments, output: output)
   }
 
-  private func findOutput(for callId: String) -> GeneratedContent? {
-    guard let toolOutput = transcriptToolOutputs.first(where: { $0.callId == callId }) else {
+  private func findOutput(for call: ToolCall) -> GeneratedContent? {
+    guard let toolOutput = transcriptToolOutputs.first(
+      where: { $0.metadata.toolCallId == call.metadata.toolCallId }) else {
       return nil
     }
 

@@ -1,8 +1,8 @@
 // By Dennis Müller
 
 import Foundation
-import Internal
 import FoundationModels
+import Internal
 
 @MainActor
 public protocol AgentAdapter {
@@ -29,9 +29,32 @@ public protocol AdapterModel {
 
 // MARK: - Metadata
 
-public protocol AdapterMetadata: Codable, Sendable, Equatable {
-  associatedtype Reasoning: Codable, Sendable, Equatable
-  associatedtype Response: Codable, Sendable, Equatable
+public protocol AdapterMetadata {
+  associatedtype Reasoning: ReasoningAdapterMetadata
+  associatedtype ToolCall: ToolCallAdapterMetadata
+  associatedtype ToolOutput: ToolOutputAdapterMetadata
+  associatedtype Response: ResponseAdapterMetadata
+}
+
+public protocol ReasoningAdapterMetadata: Codable, Sendable, Equatable {
+  var reasoningId: String { get }
+}
+
+public protocol ToolCallAdapterMetadata: Codable, Sendable, Equatable {
+  /// The provider specific identifier for the tool call.
+  ///
+  /// For example, OpenAI uses a "call_" prefixed id, while Anthropic uses a "toolu_" prefixed id.
+  var toolCallId: String { get }
+}
+
+public protocol ToolOutputAdapterMetadata: Codable, Sendable, Equatable {
+  /// The provider specific identifier for the tool call.
+  ///
+  /// For example, OpenAI uses a "call_" prefixed id, while Anthropic uses a "toolu_" prefixed id.
+  var toolCallId: String { get }
+}
+
+public protocol ResponseAdapterMetadata: Codable, Sendable, Equatable {
 }
 
 // MARK: Configuration

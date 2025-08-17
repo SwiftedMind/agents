@@ -67,15 +67,14 @@ public extension AgentTranscript {
     public var content: String
     public var context: [Context]
     public var options: GenerationOptions
-
     package var embeddedPrompt: String
-
+    
     package init(
       id: String = UUID().uuidString,
       content: String,
       context: [Context] = [],
       embeddedPrompt: String,
-      options: GenerationOptions = .init()
+      options: GenerationOptions = .init(),
     ) {
       self.id = id
       self.content = content
@@ -157,48 +156,42 @@ extension AgentTranscript.ToolCalls: RandomAccessCollection, RangeReplaceableCol
 public extension AgentTranscript {
   struct ToolCall: Sendable, Identifiable, Equatable {
     public var id: String
-    public var callId: String
     public var toolName: String
     public var arguments: GeneratedContent
     public var status: Status
+    package var metadata: Metadata.ToolCall
 
-    public init(id: String = UUID().uuidString, callId: String, toolName: String, arguments: GeneratedContent, status: Status) {
+    package init(
+      id: String = UUID().uuidString,
+      toolName: String,
+      arguments: GeneratedContent,
+      status: Status,
+      metadata: Metadata.ToolCall,
+    ) {
       self.id = id
-      self.callId = callId
       self.toolName = toolName
       self.arguments = arguments
       self.status = status
+      self.metadata = metadata
     }
   }
 
   struct ToolOutput: Sendable, Identifiable, Equatable {
     public var id: String
-    public var callId: String
     public var toolName: String
     public var segment: Segment
+    package var metadata: Metadata.ToolOutput
 
     public init(
       id: String = UUID().uuidString,
-      callId: String,
       toolName: String,
-      segment: Segment
+      segment: Segment,
+      metadata: Metadata.ToolOutput
     ) {
       self.id = id
-      self.callId = callId
       self.toolName = toolName
       self.segment = segment
-    }
-
-    public static func generatedContent(
-      _ generatedContent: some ConvertibleToGeneratedContent,
-      callId: String,
-      toolName: String,
-    ) -> Self {
-      ToolOutput(
-        callId: callId,
-        toolName: toolName,
-        segment: .structure(AgentTranscript.StructuredSegment(content: generatedContent))
-      )
+      self.metadata = metadata
     }
   }
 

@@ -18,23 +18,36 @@ public final class OpenAIAdapter: AgentAdapter {
   // MARK: - Metadata
 
   public struct Metadata: AdapterMetadata {
-    public typealias Reasoning = ReasoningMetadata
-    public typealias Response = OutputMessageMetadata
-  }
+    public struct Reasoning: ReasoningAdapterMetadata {
+      public var reasoningId: String
 
-  public struct ReasoningMetadata: Codable, Sendable, Equatable {
-    public var reasoningId: String
-
-    package init(reasoningId: String) {
-      self.reasoningId = reasoningId
+      package init(reasoningId: String) {
+        self.reasoningId = reasoningId
+      }
     }
-  }
 
-  public struct OutputMessageMetadata: Codable, Sendable, Equatable {
-    public var messageOutputId: String
+    public struct ToolCall: ToolCallAdapterMetadata {
+      public var toolCallId: String
 
-    package init(messageOutputId: String) {
-      self.messageOutputId = messageOutputId
+      package init(callId: String) {
+        toolCallId = callId
+      }
+    }
+
+    public struct ToolOutput: ToolOutputAdapterMetadata {
+      public var toolCallId: String
+
+      package init(callId: String) {
+        toolCallId = callId
+      }
+    }
+
+    public struct Response: ResponseAdapterMetadata {
+      public var messageOutputId: String
+
+      package init(messageOutputId: String) {
+        self.messageOutputId = messageOutputId
+      }
     }
   }
 
@@ -269,7 +282,7 @@ public final class OpenAIAdapter: AgentAdapter {
     let text = message.content.compactMap(\.asText).joined(separator: "\n")
     AgentLog.outputMessage(text: text, status: String(describing: message.status))
 
-    generatedTranscript.entries.append(.response(response))
+    generatedTranscript.append(.response(response))
     continuation.yield(.response(response))
   }
 
@@ -296,7 +309,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
         AgentLog.outputStructured(json: text, status: String(describing: message.status))
 
-        generatedTranscript.entries.append(.response(response))
+        generatedTranscript.append(.response(response))
         continuation.yield(.response(response))
       } catch {
         AgentLog.error(error, context: "structured_response_parsing")
@@ -320,10 +333,10 @@ public final class OpenAIAdapter: AgentAdapter {
     let generatedContent = try GeneratedContent(json: functionCall.arguments)
 
     let toolCall = Transcript<Context>.ToolCall(
-      callId: functionCall.callId,
       toolName: functionCall.name,
       arguments: generatedContent,
-      status: transcriptStatusFromOpenAIStatus(functionCall.status)
+      status: transcriptStatusFromOpenAIStatus(functionCall.status),
+      metadata: Metadata.ToolCall(callId: functionCall.callId)
     )
 
     AgentLog.toolCall(
@@ -344,11 +357,12 @@ public final class OpenAIAdapter: AgentAdapter {
     do {
       let output = try await callTool(tool, with: generatedContent)
 
-      let toolOutputEntry = Transcript<Context>.ToolOutput.generatedContent(
-        output,
-        callId: functionCall.callId,
-        toolName: tool.name
+      let toolOutputEntry = Transcript<Context>.ToolOutput(
+        toolName: functionCall.name,
+        segment: .structure(AgentTranscript.StructuredSegment(content: output)),
+        metadata: OpenAIAdapter.Metadata.ToolOutput(callId: functionCall.callId)
       )
+
       let transcriptEntry = Transcript<Context>.Entry.toolOutput(toolOutputEntry)
 
       // Try to log as JSON if possible
@@ -371,7 +385,6 @@ public final class OpenAIAdapter: AgentAdapter {
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
   ) async throws where Context: PromptContext {
-    // TODO: Always empty for some reason
     let summary = reasoning.summary.map { summary in
       switch summary {
       case let .text(text):
@@ -383,7 +396,7 @@ public final class OpenAIAdapter: AgentAdapter {
       summary: summary,
       encryptedReasoning: reasoning.encryptedContent,
       status: transcriptStatusFromOpenAIStatus(reasoning.status),
-      metadata: ReasoningMetadata(reasoningId: reasoning.id)
+      metadata: Metadata.Reasoning(reasoningId: reasoning.id)
     )
 
     AgentLog.reasoning(summary: summary)
@@ -529,7 +542,7 @@ public final class OpenAIAdapter: AgentAdapter {
         for toolCall in toolCalls {
           let item = Item.FunctionCall(
             arguments: toolCall.arguments.jsonString,
-            callId: toolCall.callId,
+            callId: toolCall.metadata.toolCallId,
             id: "fc_" + toolCall.id,
             name: toolCall.toolName,
             status: transcriptStatusToFunctionCallStatus(toolCall.status)
@@ -550,7 +563,7 @@ public final class OpenAIAdapter: AgentAdapter {
         let item = Item.FunctionCallOutput(
           id: "fc_" + toolOutput.id,
           status: nil,
-          callId: toolOutput.callId,
+          callId: toolOutput.metadata.toolCallId,
           output: output
         )
 

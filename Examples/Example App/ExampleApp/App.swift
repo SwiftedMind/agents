@@ -1,83 +1,24 @@
 // By Dennis Müller
 
 import FoundationModels
-import OSLog
 import SwiftAgent
 import SwiftUI
 
-enum PromptContext: String, SwiftAgent.PromptContext, SwiftAgent.PromptRepresentable {
-  case a = "A"
-  case b = "B"
-}
-
 @main
 struct ExampleApp: App {
-  init() {}
+  init() {
+    // Configure OpenAI adapter with API key
+    let configuration = OpenAIAdapter.Configuration.direct(apiKey: Secret.OpenAI.apiKey)
+    OpenAIAdapter.Configuration.setDefaultConfiguration(configuration)
+
+    // Enable logging for development
+    AgentConfiguration.setLoggingEnabled(true)
+    AgentConfiguration.setNetworkLoggingEnabled(false)
+  }
 
   var body: some Scene {
     WindowGroup {
       RootView()
-        .task {
-          do {
-            let tools: [any AgentTool] = [GetFavoriteNumbersTool()]
-            let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
-
-            let output = try await agent.respond(to: "Give me my 5 favorite numbers")
-            print(output)
-          } catch {}
-        }
-        .task {
-          do {
-            let configuration = OpenAIAdapter.Configuration.direct(apiKey: Secret.OpenAI.apiKey)
-            OpenAIAdapter.Configuration.setDefaultConfiguration(configuration)
-
-            AgentConfiguration.setLoggingEnabled(true)
-            AgentConfiguration.setNetworkLoggingEnabled(true)
-
-            // [any AgentTool] is sufficient if you don't need tool resolution
-            let tools: [any AgentTool<ResolvedToolRun>] = [GetFavoriteNumbersTool()]
-
-            let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
-
-            let output = try await agent.respond(to: "Give me my 5 favorite numbers", supplying: [.a, .a, .b]) { input, context in
-              PromptTag("context", items: context)
-              input
-            }
-
-            // Example of using the transcript resolver
-
-            let toolResolver = agent.transcript.toolResolver(for: tools)
-            var resolvedTools: [ResolvedToolRun] = []
-
-            for entry in agent.transcript.entries {
-              switch entry {
-              case let .toolCalls(toolCalls):
-                for toolCall in toolCalls.calls {
-                  try resolvedTools.append(toolResolver.resolve(toolCall))
-                }
-              default:
-                break
-                // ...
-              }
-            }
-
-            // Now we have type-safe, easy access to any tool runs, which is useful for passing it to the UI
-            for resolvedTool in resolvedTools {
-              switch resolvedTool {
-              case let .getFavoriteNumbers(run):
-                _ = run.arguments.count
-
-                if let output = run.output {
-                  _ = output.numbers
-                }
-              }
-            }
-
-            print("Result:", output.content)
-          } catch {
-            print("Error \(error)")
-          }
-        }
     }
   }
 }
@@ -85,40 +26,179 @@ struct ExampleApp: App {
 // MARK: - Tools
 
 @Generable
-struct NumbersOutput {
-  var numbers: [Int]
-}
-
-@Generable
-struct GetFavoriteNumbersTool: AgentTool {
-  let name = "get_favorite_numbers"
-  let description = "Fetches the user's favorite numbers"
+struct CalculatorTool: AgentTool {
+  let name = "calculator"
+  let description = "Performs basic mathematical calculations"
 
   @Generable
   struct Arguments {
-    @Guide(description: "The amount of numbers to fetch", .range(1...10))
-    let count: Int
+    @Guide(description: "The first number")
+    let firstNumber: Double
+
+    @Guide(description: "The operation to perform (+, -, *, /)")
+    let operation: String
+
+    @Guide(description: "The second number")
+    let secondNumber: Double
   }
 
   @Generable
   struct Output {
-    var numbers: [Int]
+    let result: Double
+    let expression: String
   }
 
   func call(arguments: Arguments) async throws -> Output {
-    var output = Output(numbers: Array(repeating: 0, count: arguments.count))
-    for index in output.numbers.indices {
-      output.numbers[index] = Int.random(in: 0...1000)
+    let result: Double
+
+    switch arguments.operation {
+    case "+":
+      result = arguments.firstNumber + arguments.secondNumber
+    case "-":
+      result = arguments.firstNumber - arguments.secondNumber
+    case "*":
+      result = arguments.firstNumber * arguments.secondNumber
+    case "/":
+      guard arguments.secondNumber != 0 else {
+        throw ToolError.divisionByZero
+      }
+
+      result = arguments.firstNumber / arguments.secondNumber
+    default:
+      throw ToolError.unsupportedOperation(arguments.operation)
     }
-    return output
+
+    let expression = "\(arguments.firstNumber) \(arguments.operation) \(arguments.secondNumber) = \(result)"
+    return Output(result: result, expression: expression)
   }
 
-  /// Only required to implement when you want to resolve tool runs in the transcript (type-safe tool groupings wrapping tool runs)
-  func resolve(_ run: AgentToolRun<GetFavoriteNumbersTool>) -> ResolvedToolRun {
-    .getFavoriteNumbers(run)
+  func resolve(_ run: AgentToolRun<CalculatorTool>) -> ResolvedToolRun {
+    .calculator(run)
+  }
+}
+
+@Generable
+struct WeatherTool: AgentTool {
+  let name = "get_weather"
+  let description = "Gets current weather information for a location"
+
+  @Generable
+  struct Arguments {
+    @Guide(description: "The city or location to get weather for")
+    let location: String
+  }
+
+  @Generable
+  struct Output {
+    let location: String
+    let temperature: Int
+    let condition: String
+    let humidity: Int
+  }
+
+  func call(arguments: Arguments) async throws -> Output {
+    // Simulate API delay
+    try await Task.sleep(nanoseconds: 500_000_000)
+
+    // Mock weather data based on location
+    let mockWeatherData = [
+      "london": ("London", 15, "Cloudy", 78),
+      "paris": ("Paris", 18, "Sunny", 65),
+      "tokyo": ("Tokyo", 22, "Rainy", 85),
+      "new york": ("New York", 20, "Partly Cloudy", 72),
+      "sydney": ("Sydney", 25, "Sunny", 55),
+    ]
+
+    let locationKey = arguments.location.lowercased()
+    let weatherData = mockWeatherData[locationKey] ??
+      (arguments.location, Int.random(in: 10...30), ["Sunny", "Cloudy", "Rainy"].randomElement()!, Int.random(in: 40...90))
+
+    return Output(
+      location: weatherData.0,
+      temperature: weatherData.1,
+      condition: weatherData.2,
+      humidity: weatherData.3
+    )
+  }
+
+  func resolve(_ run: AgentToolRun<WeatherTool>) -> ResolvedToolRun {
+    .weather(run)
+  }
+}
+
+@Generable
+struct CurrentTimeTool: AgentTool {
+  let name = "get_current_time"
+  let description = "Gets the current date and time"
+
+  @Generable
+  struct Arguments {
+    @Guide(description: "Optional timezone (e.g., 'UTC', 'PST', 'EST'). Defaults to local time.")
+    let timezone: String?
+  }
+
+  @Generable
+  struct Output {
+    let currentTime: String
+    let timezone: String
+    let timestamp: Double
+  }
+
+  func call(arguments: Arguments) async throws -> Output {
+    let now = Date()
+    let formatter = DateFormatter()
+    formatter.dateStyle = .full
+    formatter.timeStyle = .long
+
+    let timezoneString: String
+    if let requestedTimezone = arguments.timezone {
+      switch requestedTimezone.uppercased() {
+      case "UTC":
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        timezoneString = "UTC"
+      case "PST":
+        formatter.timeZone = TimeZone(identifier: "America/Los_Angeles")
+        timezoneString = "PST"
+      case "EST":
+        formatter.timeZone = TimeZone(identifier: "America/New_York")
+        timezoneString = "EST"
+      default:
+        formatter.timeZone = TimeZone.current
+        timezoneString = TimeZone.current.identifier
+      }
+    } else {
+      formatter.timeZone = TimeZone.current
+      timezoneString = TimeZone.current.identifier
+    }
+
+    return Output(
+      currentTime: formatter.string(from: now),
+      timezone: timezoneString,
+      timestamp: now.timeIntervalSince1970
+    )
+  }
+
+  func resolve(_ run: AgentToolRun<CurrentTimeTool>) -> ResolvedToolRun {
+    .currentTime(run)
   }
 }
 
 enum ResolvedToolRun {
-  case getFavoriteNumbers(AgentToolRun<GetFavoriteNumbersTool>)
+  case calculator(AgentToolRun<CalculatorTool>)
+  case weather(AgentToolRun<WeatherTool>)
+  case currentTime(AgentToolRun<CurrentTimeTool>)
+}
+
+enum ToolError: Error, LocalizedError {
+  case divisionByZero
+  case unsupportedOperation(String)
+
+  var errorDescription: String? {
+    switch self {
+    case .divisionByZero:
+      return "Cannot divide by zero"
+    case let .unsupportedOperation(operation):
+      return "Unsupported operation: \(operation)"
+    }
+  }
 }
