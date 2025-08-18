@@ -90,6 +90,8 @@ print(response.content)
 Create tools using Apple's `@Generable` macro for type-safe, schema-free tool definitions:
 
 ```swift
+import FoundationModels
+
 struct WeatherTool: AgentTool {
   let name = "get_weather"
   let description = "Get current weather for a location"

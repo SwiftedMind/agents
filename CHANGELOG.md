@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.5.0]
+
+### Breaking Changes
+
+- **Adapter-Specific Generation Options**: Replaced the generic `GenerationOptions` struct with adapter-specific generation options. Each adapter now defines its own `GenerationOptions` type as an associated type, providing better type safety and access to adapter-specific parameters:
+  ```swift
+  // Before
+  let options = GenerationOptions(temperature: 0.7, maximumResponseTokens: 1000)
+  let response = try await agent.respond(to: prompt, options: options)
+  
+  // Now
+  let options = OpenAIAdapter.GenerationOptions(temperature: 0.7, maxOutputTokens: 1000)
+  let response = try await agent.respond(to: prompt, options: options)
+  ```
+
+### Added
+
+- **Comprehensive OpenAI Configuration**: The new `OpenAIAdapter.GenerationOptions` provides access to all OpenAI API parameters including:
+  - `include` - Additional outputs like reasoning or logprobs
+  - `allowParallelToolCalls` - Control parallel tool execution
+  - `reasoning` - Configuration for reasoning-capable models
+  - `safetyIdentifier` - Misuse detection identifier
+  - `serviceTier` - Request priority and throughput control
+  - `toolChoice` - Fine-grained tool selection control
+  - `topLogProbs` - Token probability information
+  - `topP` - Alternative sampling method
+  - `truncation` - Context window handling
+  - And more OpenAI-specific options
+
+- **Enhanced AgentAdapter Protocol**: Added `GenerationOptions` as an associated type to the `AgentAdapter` protocol, enabling type-safe, adapter-specific configuration
+
+### Enhanced
+
+- **Type Safety**: Generation options are now compile-time validated and specific to each adapter implementation
+- **Code Organization**: Moved `OpenAIAdapter.Metadata` to an extension for better code structure
+
+### Migration Guide
+
+1. **Update Generation Options**: Replace generic `GenerationOptions` with adapter-specific options:
+   ```swift
+   // Update import if needed
+   let options = OpenAIAdapter.GenerationOptions(
+     temperature: 0.7,
+     maxOutputTokens: 1000,
+     reasoning: .init(effort: .medium)
+   )
+   ```
+
+2. **Custom Adapters**: If you have custom adapters, implement the `GenerationOptions` associated type:
+   ```swift
+   public protocol MyCustomAdapter: AgentAdapter {
+     struct GenerationOptions: AdapterGenerationOptions {
+       // Your custom options
+       public init() {}
+     }
+   }
+   ```
+
 ## [0.4.1]
 
 ### Fixed
