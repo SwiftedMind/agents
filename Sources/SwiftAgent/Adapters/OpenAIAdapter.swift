@@ -15,42 +15,6 @@ public final class OpenAIAdapter: AgentAdapter {
   private let httpClient: HTTPClient
   private let responsesPath: String
 
-  // MARK: - Metadata
-
-  public struct Metadata: AdapterMetadata {
-    public struct Reasoning: ReasoningAdapterMetadata {
-      public var reasoningId: String
-
-      package init(reasoningId: String) {
-        self.reasoningId = reasoningId
-      }
-    }
-
-    public struct ToolCall: ToolCallAdapterMetadata {
-      public var toolCallId: String
-
-      package init(callId: String) {
-        toolCallId = callId
-      }
-    }
-
-    public struct ToolOutput: ToolOutputAdapterMetadata {
-      public var toolCallId: String
-
-      package init(callId: String) {
-        toolCallId = callId
-      }
-    }
-
-    public struct Response: ResponseAdapterMetadata {
-      public var messageOutputId: String
-
-      package init(messageOutputId: String) {
-        self.messageOutputId = messageOutputId
-      }
-    }
-  }
-
   // MARK: - Configuration
 
   public struct Configuration: AdapterConfiguration {
@@ -437,14 +401,24 @@ public final class OpenAIAdapter: AgentAdapter {
     return Request(
       model: model,
       input: .list(transcriptToListItems(transcript)),
-      include: model.isReasoning ? [.encryptedReasoning] : nil,
+      background: nil,
+      include: options.include,
       instructions: instructions,
-      maxOutputTokens: options.maximumResponseTokens,
-      reasoning: ReasoningConfig(effort: .low, summary: .detailed),
-      safetyIdentifier: "",
+      maxOutputTokens: options.maxOutputTokens,
+      maxToolCalls: options.maxOutputTokens,
+      metadata: nil,
+      parallelToolCalls: options.allowParallelToolCalls,
+      previousResponseId: nil,
+      prompt: nil,
+      promptCacheKey: nil,
+      reasoning: options.reasoning,
+      safetyIdentifier: options.safetyIdentifier,
+      serviceTier: options.serviceTier,
       store: false,
-      temperature: model.isReasoning ? nil : options.temperature,
+      stream: nil,
+      temperature: options.temperature,
       text: textConfig,
+      toolChoice: options.toolChoice,
       tools: tools.map { tool in
         .function(
           name: tool.name,
@@ -452,7 +426,10 @@ public final class OpenAIAdapter: AgentAdapter {
           parameters: tool.parameters,
           strict: false // Important because GenerationSchema doesn't produce a compliant strict schema for OpenAI!
         )
-      }
+      },
+      topLogprobs: options.topLogProbs,
+      topP: options.topP,
+      truncation: options.truncation
     )
   }
 
@@ -626,6 +603,116 @@ extension OpenAI.Model: AdapterModel {
          .o4MiniDeepResearch:
       return true
     default: return false
+    }
+  }
+}
+
+// MARK: - Metadata
+
+public extension OpenAIAdapter {
+  struct Metadata: AdapterMetadata {
+    public struct Reasoning: ReasoningAdapterMetadata {
+      public var reasoningId: String
+
+      package init(reasoningId: String) {
+        self.reasoningId = reasoningId
+      }
+    }
+
+    public struct ToolCall: ToolCallAdapterMetadata {
+      public var toolCallId: String
+
+      package init(callId: String) {
+        toolCallId = callId
+      }
+    }
+
+    public struct ToolOutput: ToolOutputAdapterMetadata {
+      public var toolCallId: String
+
+      package init(callId: String) {
+        toolCallId = callId
+      }
+    }
+
+    public struct Response: ResponseAdapterMetadata {
+      public var messageOutputId: String
+
+      package init(messageOutputId: String) {
+        self.messageOutputId = messageOutputId
+      }
+    }
+  }
+}
+
+// MARK: - Generation Options
+
+public extension OpenAIAdapter {
+  struct GenerationOptions: AdapterGenerationOptions {
+    public typealias Include = OpenAI.Request.Include
+    public typealias ReasoningConfig = OpenAI.ReasoningConfig
+    public typealias ToolChoice = OpenAI.Tool.Choice
+    public typealias Truncation = OpenAI.Truncation
+
+    /// Specifies additional outputs to include with the response, such as code interpreter results, search outputs, or logprobs.
+    public var include: [Include]?
+
+    /// The maximum number of tokens that the model can generate in its response.
+    public var maxOutputTokens: UInt?
+
+    /// Controls whether multiple tool calls can be executed in parallel during generation.
+    public var allowParallelToolCalls: Bool?
+
+    /// Configuration for reasoning-capable models, including effort level and summary formatting options.
+    public var reasoning: ReasoningConfig?
+
+    /// A stable identifier used by OpenAI to help detect potential misuse patterns across requests.
+    public var safetyIdentifier: String?
+
+    /// The service tier to use, which affects request priority, throughput limits, and cost.
+    public var serviceTier: ServiceTier?
+
+    /// Controls the randomness of the output. Values range from 0 to 2, where higher values produce more random results.
+    public var temperature: Double?
+
+    /// Specifies how the model should choose which tools to call, if any. Options include automatic, none, required, or a specific tool.
+    public var toolChoice: ToolChoice?
+      
+    /// The number of most likely tokens to return at each token position, along with their log probabilities. Must be between 0 and 20.
+    public var topLogProbs: UInt?
+
+    /// An alternative to temperature sampling. Only tokens with cumulative probability up to this threshold are considered.
+    public var topP: Double?
+
+    /// Defines how the model should handle inputs that exceed the context window limits.
+    public var truncation: Truncation?
+
+    public init() {}
+
+    public init(
+      include: [Include]? = nil,
+      maxOutputTokens: UInt? = nil,
+      allowParallelToolCalls: Bool? = nil,
+      reasoning: ReasoningConfig? = nil,
+      safetyIdentifier: String? = nil,
+      serviceTier: ServiceTier? = nil,
+      temperature: Double? = nil,
+      toolChoice: ToolChoice? = nil,
+      topLogProbs: UInt? = nil,
+      topP: Double? = nil,
+      truncation: Truncation? = nil
+    ) {
+      self.include = include
+      self.maxOutputTokens = maxOutputTokens
+      self.allowParallelToolCalls = allowParallelToolCalls
+      self.reasoning = reasoning
+      self.safetyIdentifier = safetyIdentifier
+      self.serviceTier = serviceTier
+      self.temperature = temperature
+      self.toolChoice = toolChoice
+      self.topLogProbs = topLogProbs
+      self.topP = topP
+      self.truncation = truncation
     }
   }
 }

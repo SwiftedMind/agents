@@ -1,5 +1,9 @@
 # SwiftAgent
 
+**Native Swift SDK for building autonomous AI agents with Apple's FoundationModels design philosophy**
+
+SwiftAgent simplifies AI agent development by providing a clean, intuitive API that handles all the complexity of agent loops, tool execution, and adapter communication. Inspired by Apple's FoundationModels framework, it brings the same elegant, declarative approach to cross-platform AI agent development.
+
 ## General Instructions
 
 - Always follow the best practices of naming things in Swift

@@ -26,12 +26,18 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
   private func processStringResponse(
     from prompt: Transcript.Prompt,
     using model: Adapter.Model,
-    options: GenerationOptions
+    options: Adapter.GenerationOptions
   ) async throws -> Response<String> {
     let promptEntry = Transcript.Entry.prompt(prompt)
     transcript.append(promptEntry)
 
-    let stream = adapter.respond(to: prompt, generating: String.self, using: model, including: transcript, options: options)
+    let stream = adapter.respond(
+      to: prompt,
+      generating: String.self,
+      using: model,
+      including: transcript,
+      options: options
+    )
     var responseContent: [String] = []
     var addedEntities: [Transcript.Entry] = []
 
@@ -63,12 +69,18 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
     from prompt: Transcript.Prompt,
     generating type: Content.Type,
     using model: Adapter.Model,
-    options: GenerationOptions
+    options: Adapter.GenerationOptions
   ) async throws -> Response<Content> where Content: Generable {
     let promptEntry = Transcript.Entry.prompt(prompt)
     transcript.append(promptEntry)
 
-    let stream = adapter.respond(to: prompt, generating: type, using: model, including: transcript, options: options)
+    let stream = adapter.respond(
+      to: prompt,
+      generating: type,
+      using: model,
+      including: transcript,
+      options: options
+    )
     var addedEntities: [Transcript.Entry] = []
 
     for try await entry in stream {
@@ -149,7 +161,7 @@ public extension Agent {
   func respond(
     to prompt: String,
     using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions()
+    options: Adapter.GenerationOptions = Adapter.GenerationOptions()
   ) async throws -> Response<String> {
     let prompt = Transcript.Prompt(content: prompt, embeddedPrompt: prompt)
     return try await processStringResponse(from: prompt, using: model, options: options)
@@ -159,7 +171,7 @@ public extension Agent {
   func respond(
     to prompt: Prompt,
     using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions()
+    options: Adapter.GenerationOptions = Adapter.GenerationOptions()
   ) async throws -> Response<String> {
     try await respond(to: prompt.formatted(), using: model, options: options)
   }
@@ -167,7 +179,7 @@ public extension Agent {
   @discardableResult
   func respond(
     using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions(),
+    options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
     @PromptBuilder prompt: () throws -> Prompt
   ) async throws -> Response<String> {
     try await respond(to: prompt().formatted(), using: model, options: options)
@@ -182,7 +194,7 @@ public extension Agent {
     to prompt: String,
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions()
+    options: Adapter.GenerationOptions = Adapter.GenerationOptions()
   ) async throws -> Response<Content> where Content: Generable {
     let prompt = Transcript.Prompt(content: prompt, embeddedPrompt: prompt)
     return try await processStructuredResponse(from: prompt, generating: type, using: model, options: options)
@@ -193,7 +205,7 @@ public extension Agent {
     to prompt: Prompt,
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions()
+    options: Adapter.GenerationOptions = Adapter.GenerationOptions()
   ) async throws -> Response<Content> where Content: Generable {
     try await respond(
       to: prompt.formatted(),
@@ -207,7 +219,7 @@ public extension Agent {
   func respond<Content>(
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions(),
+    options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
     @PromptBuilder prompt: () throws -> Prompt
   ) async throws -> Response<Content> where Content: Generable {
     try await respond(
@@ -227,7 +239,7 @@ public extension Agent {
     to input: String,
     supplying context: [Context],
     using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions(),
+    options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
     @PromptBuilder embeddingInto prompt: @Sendable (_ input: String, _ context: [Context]) -> Prompt
   ) async throws -> Response<String> {
     let prompt = Transcript.Prompt(
@@ -244,7 +256,7 @@ public extension Agent {
     supplying context: [Context],
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
-    options: GenerationOptions = GenerationOptions(),
+    options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
     @PromptBuilder embeddingInto prompt: @Sendable (_ prompt: String, _ embeddables: [Context]) -> Prompt
   ) async throws -> Response<Content> where Content: Generable {
     let prompt = Transcript.Prompt(

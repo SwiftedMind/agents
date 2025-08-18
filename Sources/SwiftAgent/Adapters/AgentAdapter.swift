@@ -6,6 +6,7 @@ import Internal
 
 @MainActor
 public protocol AgentAdapter {
+  associatedtype GenerationOptions: AdapterGenerationOptions
   associatedtype Model: AdapterModel
   associatedtype Configuration: AdapterConfiguration
   associatedtype Metadata: AdapterMetadata
@@ -19,6 +20,12 @@ public protocol AgentAdapter {
     including transcript: AgentTranscript<Metadata, Context>,
     options: GenerationOptions
   ) -> AsyncThrowingStream<AgentTranscript<Metadata, Context>.Entry, any Error> where Content: Generable, Context: PromptContext
+}
+
+// MARK: - GenerationOptions
+
+public protocol AdapterGenerationOptions {
+  init()
 }
 
 // MARK: - Model
@@ -54,8 +61,7 @@ public protocol ToolOutputAdapterMetadata: Codable, Sendable, Equatable {
   var toolCallId: String { get }
 }
 
-public protocol ResponseAdapterMetadata: Codable, Sendable, Equatable {
-}
+public protocol ResponseAdapterMetadata: Codable, Sendable, Equatable {}
 
 // MARK: Configuration
 
