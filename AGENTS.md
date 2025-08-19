@@ -4,6 +4,58 @@
 
 SwiftAgent simplifies AI agent development by providing a clean, intuitive API that handles all the complexity of agent loops, tool execution, and adapter communication. Inspired by Apple's FoundationModels framework, it brings the same elegant, declarative approach to cross-platform AI agent development.
 
+## Project Overview
+
+SwiftAgent is a Swift Package that provides:
+- **Core SDK** (`Sources/SwiftAgent/`): The main agent framework with adapter support for OpenAI and extensible to other providers
+- **Example App** (`Examples/Example App/`): A working iOS app demonstrating SDK usage
+- **Documentation** (`docs/`): Technical guidelines and Apple platform insights
+
+### Key Features
+- 🎯 Zero-Setup Agent Loops with autonomous execution
+- 🔧 Native Tool Integration using `@Generable` structs from FoundationModels
+- 🌐 Adapter Agnostic design (OpenAI included, extensible to other providers)
+- 📱 Apple-Native API inspired by FoundationModels
+- 🚀 Modern Swift 6 with async/await and concurrency
+- 📊 Rich Logging for debugging and monitoring
+
+## Project Structure
+
+### Core SDK (`Sources/SwiftAgent/`)
+- **`Agent.swift`** - Main agent class and core loop implementation
+- **`AgentConfiguration.swift`** - Global configuration and logging settings
+- **`AgentTool.swift`** - Tool definition protocols and implementations
+- **`AgentToolResolver.swift`** - Type-safe tool resolution system
+- **`AgentTranscript.swift`** - Conversation history and transcript management
+- **`PromptContext.swift`** - Context injection system for prompts
+- **`Adapters/`** - AI provider adapters (OpenAI, extensible)
+- **`Networking/`** - HTTP client and error handling
+- **`PromptBuilder/`** - DSL for building structured prompts
+
+### Example Application (`Examples/Example App/`)
+- **`App.swift`** - Main app entry point
+- **`RootView.swift`** - Primary UI demonstrating agent usage
+- **`Config/`** - App configuration and secrets management
+
+### Testing (`Tests/`)
+- **`SwiftAgentTests/`** - Core SDK unit tests using Swift Testing
+- **`SwiftAgentTests.xctestplan`** - Test plan configuration
+
+## Quick Navigation for AI Agents
+
+### Common Entry Points
+- **Start here for core logic**: `Sources/SwiftAgent/Agent.swift:1` - Main agent implementation
+- **Tool development**: `Sources/SwiftAgent/AgentTool.swift:1` - Tool protocols and examples
+- **Adding new adapters**: `Sources/SwiftAgent/Adapters/AgentAdapter.swift:1` - Adapter protocol definition
+- **Example usage**: `Examples/Example App/RootView.swift:1` - Working agent implementation in UI
+
+### When Working on Different Areas
+- **Core agent logic**: Focus on `Sources/SwiftAgent/Agent.swift` and related files
+- **Tool system**: Check `AgentTool.swift`, `AgentToolResolver.swift`, and existing tool examples
+- **UI/Example app**: Work in `Examples/Example App/` directory
+- **Networking/HTTP**: Modify files in `Sources/SwiftAgent/Networking/`
+- **Testing**: Add tests to `Tests/SwiftAgentTests/` using Swift Testing framework
+
 ## General Instructions
 
 - Always follow the best practices of naming things in Swift
