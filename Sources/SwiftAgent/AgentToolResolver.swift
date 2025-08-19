@@ -32,7 +32,6 @@ public struct AgentToolResolver<Metadata: AdapterMetadata, Context: PromptContex
   }
 
   public func resolve(_ call: ToolCall) throws -> ResolvedToolRun {
-    AgentLog.debug("Resolving tool: \(call.toolName)", context: "Tool resolution")
 
     guard let tool = toolsByName[call.toolName] else {
       let availableTools = toolsByName.keys.sorted().joined(separator: ", ")
@@ -47,7 +46,6 @@ public struct AgentToolResolver<Metadata: AdapterMetadata, Context: PromptContex
 
     do {
       let resolvedTool = try tool.resolvedTool(arguments: call.arguments, output: output)
-      AgentLog.success("Tool resolved: \(call.toolName)", context: "Tool resolution")
       return resolvedTool
     } catch {
       AgentLog.error(error, context: "Tool resolution for '\(call.toolName)'")
