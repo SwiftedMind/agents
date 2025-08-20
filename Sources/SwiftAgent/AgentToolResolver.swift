@@ -8,18 +8,18 @@ import OSLog
 // MARK: - Tool Resolver
 
 public extension AgentTranscript {
-  func toolResolver<ResolvedToolRun>(for tools: [any AgentTool<ResolvedToolRun>]) -> AgentToolResolver<Metadata, ContextReference, ResolvedToolRun> {
+  func toolResolver<ResolvedToolRun>(for tools: [any AgentTool<ResolvedToolRun>]) -> AgentToolResolver<ContextReference, ResolvedToolRun> {
     AgentToolResolver(tools: tools, in: self)
   }
 }
 
-public struct AgentToolResolver<Metadata: AdapterMetadata, ContextReference: PromptContextReference, ResolvedToolRun> {
-  public typealias ToolCall = AgentTranscript<Metadata, ContextReference>.ToolCall
+public struct AgentToolResolver<ContextReference: PromptContextReference, ResolvedToolRun> {
+  public typealias ToolCall = AgentTranscript<ContextReference>.ToolCall
 
   private let toolsByName: [String: any AgentTool<ResolvedToolRun>]
-  private let transcriptToolOutputs: [AgentTranscript<Metadata, ContextReference>.ToolOutput]
+  private let transcriptToolOutputs: [AgentTranscript<ContextReference>.ToolOutput]
 
-  init(tools: [any AgentTool<ResolvedToolRun>], in transcript: AgentTranscript<Metadata, ContextReference>) {
+  init(tools: [any AgentTool<ResolvedToolRun>], in transcript: AgentTranscript<ContextReference>) {
     toolsByName = Dictionary(uniqueKeysWithValues: tools.map { ($0.name, $0) })
     transcriptToolOutputs = transcript.compactMap { entry in
       switch entry {
@@ -32,7 +32,6 @@ public struct AgentToolResolver<Metadata: AdapterMetadata, ContextReference: Pro
   }
 
   public func resolve(_ call: ToolCall) throws -> ResolvedToolRun {
-
     guard let tool = toolsByName[call.toolName] else {
       let availableTools = toolsByName.keys.sorted().joined(separator: ", ")
       AgentLog.error(
@@ -55,7 +54,7 @@ public struct AgentToolResolver<Metadata: AdapterMetadata, ContextReference: Pro
 
   private func findOutput(for call: ToolCall) -> GeneratedContent? {
     guard let toolOutput = transcriptToolOutputs.first(
-      where: { $0.metadata.toolCallId == call.metadata.toolCallId }) else {
+      where: { $0.callId == call.callId }) else {
       return nil
     }
 

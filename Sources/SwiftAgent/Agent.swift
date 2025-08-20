@@ -7,11 +7,11 @@ public typealias OpenAIAgent<ContextReference: PromptContextReference> = Agent<O
 
 @Observable @MainActor
 public final class Agent<Adapter: AgentAdapter, ContextReference: PromptContextReference> {
-  public typealias Transcript = AgentTranscript<Adapter.Metadata, ContextReference>
+  public typealias Transcript = AgentTranscript<ContextReference>
   public typealias Context = PromptContext<ContextReference>
   public typealias Response<Content: Generable> = AgentResponse<Adapter, ContextReference, Content>
 
-  package let adapter: Adapter
+  private let adapter: Adapter
 
   public var transcript: Transcript
 
@@ -232,7 +232,6 @@ public extension Agent {
   }
 }
 
-
 // MARK: - Agent + Context Responses
 
 public extension Agent {
@@ -244,9 +243,8 @@ public extension Agent {
     options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
     @PromptBuilder embeddingInto prompt: @Sendable (_ input: String, _ context: Context) -> Prompt
   ) async throws -> Response<String> {
-    
     let context = Context(references: contextItems, linkPreviews: [])
-    
+
     let prompt = Transcript.Prompt(
       input: input,
       context: context,
@@ -264,9 +262,8 @@ public extension Agent {
     options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
     @PromptBuilder embeddingInto prompt: @Sendable (_ prompt: String, _ context: Context) -> Prompt
   ) async throws -> Response<Content> where Content: Generable {
-    
     let context = Context(references: contextItems, linkPreviews: [])
-    
+
     let prompt = Transcript.Prompt(
       input: input,
       context: context,
@@ -284,11 +281,8 @@ public struct AgentResponse<Adapter: AgentAdapter, ContextReference: PromptConte
 
   /// The transcript entries that the prompt produced.
   public var addedEntries: [Agent<Adapter, ContextReference>.Transcript.Entry]
-  
-  package init(
-    content: Content,
-    addedEntries: [Agent<Adapter, ContextReference>.Transcript.Entry]
-  ) {
+
+  package init(content: Content, addedEntries: [Agent<Adapter, ContextReference>.Transcript.Entry]) {
     self.content = content
     self.addedEntries = addedEntries
   }

@@ -8,7 +8,7 @@ import OSLog
 
 public final class OpenAIAdapter: AgentAdapter {
   public typealias Model = OpenAI.Model
-  public typealias Transcript<ContextReference: PromptContextReference> = AgentTranscript<Metadata, ContextReference>
+  public typealias Transcript<ContextReference: PromptContextReference> = AgentTranscript<ContextReference>
 
   private var tools: [any AgentTool]
   private var instructions: String = ""
@@ -178,9 +178,9 @@ public final class OpenAIAdapter: AgentAdapter {
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
   ) async throws where Context: PromptContextReference {
     let response = Transcript<Context>.Response(
+      id: message.id,
       segments: message.content.compactMap(\.asText).map { .text(Transcript.TextSegment(content: $0)) },
       status: transcriptStatusFromOpenAIStatus(message.status),
-      metadata: Metadata.Response(messageOutputId: message.id)
     )
 
     let text = message.content.compactMap(\.asText).joined(separator: "\n")
@@ -206,9 +206,9 @@ public final class OpenAIAdapter: AgentAdapter {
       do {
         let generatedContent = try GeneratedContent(json: text)
         let response = Transcript<Context>.Response(
+          id: message.id,
           segments: [.structure(Transcript.StructuredSegment(content: generatedContent))],
           status: transcriptStatusFromOpenAIStatus(message.status),
-          metadata: Metadata.Response(messageOutputId: message.id)
         )
 
         AgentLog.outputStructured(json: text, status: String(describing: message.status))
@@ -237,10 +237,11 @@ public final class OpenAIAdapter: AgentAdapter {
     let generatedContent = try GeneratedContent(json: functionCall.arguments)
 
     let toolCall = Transcript<Context>.ToolCall(
+      id: functionCall.id,
+      callId: functionCall.callId,
       toolName: functionCall.name,
       arguments: generatedContent,
       status: transcriptStatusFromOpenAIStatus(functionCall.status),
-      metadata: Metadata.ToolCall(callId: functionCall.callId)
     )
 
     AgentLog.toolCall(
@@ -262,9 +263,10 @@ public final class OpenAIAdapter: AgentAdapter {
       let output = try await callTool(tool, with: generatedContent)
 
       let toolOutputEntry = Transcript<Context>.ToolOutput(
+        id: UUID().uuidString,
+        callId: functionCall.callId,
         toolName: functionCall.name,
         segment: .structure(AgentTranscript.StructuredSegment(content: output)),
-        metadata: OpenAIAdapter.Metadata.ToolOutput(callId: functionCall.callId)
       )
 
       let transcriptEntry = Transcript<Context>.Entry.toolOutput(toolOutputEntry)
@@ -297,10 +299,10 @@ public final class OpenAIAdapter: AgentAdapter {
     }
 
     let entryData = Transcript<Context>.Reasoning(
+      id: reasoning.id,
       summary: summary,
       encryptedReasoning: reasoning.encryptedContent,
       status: transcriptStatusFromOpenAIStatus(reasoning.status),
-      metadata: Metadata.Reasoning(reasoningId: reasoning.id)
     )
 
     AgentLog.reasoning(summary: summary)
@@ -448,7 +450,7 @@ public final class OpenAIAdapter: AgentAdapter {
         listItems.append(Input.ListItem.message(role: .user, content: .text(prompt.embeddedPrompt)))
       case let .reasoning(reasoning):
         let item = Item.Reasoning(
-          id: reasoning.metadata.reasoningId,
+          id: reasoning.id,
           summary: [],
           status: transcriptStatusToReasoningStatus(reasoning.status),
           encryptedContent: reasoning.encryptedReasoning
@@ -459,7 +461,7 @@ public final class OpenAIAdapter: AgentAdapter {
         for toolCall in toolCalls {
           let item = Item.FunctionCall(
             arguments: toolCall.arguments.jsonString,
-            callId: toolCall.metadata.toolCallId,
+            callId: toolCall.callId,
             id: "fc_" + toolCall.id,
             name: toolCall.toolName,
             status: transcriptStatusToFunctionCallStatus(toolCall.status)
@@ -480,7 +482,7 @@ public final class OpenAIAdapter: AgentAdapter {
         let item = Item.FunctionCallOutput(
           id: "fc_" + toolOutput.id,
           status: nil,
-          callId: toolOutput.metadata.toolCallId,
+          callId: toolOutput.callId,
           output: output
         )
 
@@ -496,7 +498,7 @@ public final class OpenAIAdapter: AgentAdapter {
               return nil
             }
           },
-          id: response.metadata.messageOutputId,
+          id: response.id,
           role: .assistant,
           status: transcriptStatusToMessageStatus(response.status)
         )
@@ -605,44 +607,6 @@ public extension OpenAIAdapter {
       )
 
       return Configuration(httpClient: URLSessionHTTPClient(configuration: config), responsesPath: responsesPath)
-    }
-  }
-}
-
-// MARK: - Metadata
-
-public extension OpenAIAdapter {
-  struct Metadata: AdapterMetadata {
-    public struct Reasoning: ReasoningAdapterMetadata {
-      public var reasoningId: String
-
-      package init(reasoningId: String) {
-        self.reasoningId = reasoningId
-      }
-    }
-
-    public struct ToolCall: ToolCallAdapterMetadata {
-      public var toolCallId: String
-
-      package init(callId: String) {
-        toolCallId = callId
-      }
-    }
-
-    public struct ToolOutput: ToolOutputAdapterMetadata {
-      public var toolCallId: String
-
-      package init(callId: String) {
-        toolCallId = callId
-      }
-    }
-
-    public struct Response: ResponseAdapterMetadata {
-      public var messageOutputId: String
-
-      package init(messageOutputId: String) {
-        self.messageOutputId = messageOutputId
-      }
     }
   }
 }

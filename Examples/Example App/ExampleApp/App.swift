@@ -25,7 +25,6 @@ struct ExampleApp: App {
 
 // MARK: - Tools
 
-@Generable
 struct CalculatorTool: AgentTool {
   let name = "calculator"
   let description = "Performs basic mathematical calculations"
@@ -77,13 +76,12 @@ struct CalculatorTool: AgentTool {
   }
 }
 
-@Generable
 struct WeatherTool: AgentTool {
   let name = "get_weather"
   let description = "Gets current weather information for a location"
 
   @Generable
-  struct Arguments {
+  struct Arguments: Encodable {
     @Guide(description: "The city or location to get weather for")
     let location: String
   }
@@ -126,7 +124,6 @@ struct WeatherTool: AgentTool {
   }
 }
 
-@Generable
 struct CurrentTimeTool: AgentTool {
   let name = "get_current_time"
   let description = "Gets the current date and time"

@@ -3,7 +3,7 @@
 import Foundation
 import FoundationModels
 
-public struct AgentTranscript<Metadata: AdapterMetadata, ContextReference: PromptContextReference>: Sendable, Equatable {
+public struct AgentTranscript<ContextReference: PromptContextReference>: Sendable, Equatable {
   public var entries: [Entry]
 
   public init(entries: [Entry] = []) {
@@ -86,20 +86,17 @@ public extension AgentTranscript {
     public var summary: [String]
     public var encryptedReasoning: String?
     public var status: Status?
-    package var metadata: Metadata.Reasoning
 
     package init(
-      id: String = UUID().uuidString,
+      id: String,
       summary: [String],
       encryptedReasoning: String?,
       status: Status? = nil,
-      metadata: Metadata.Reasoning
     ) {
       self.id = id
       self.summary = summary
       self.encryptedReasoning = encryptedReasoning
       self.status = status
-      self.metadata = metadata
     }
   }
 
@@ -128,7 +125,7 @@ extension AgentTranscript.ToolCalls: RandomAccessCollection, RangeReplaceableCol
   public var startIndex: Int { calls.startIndex }
   public var endIndex: Int { calls.endIndex }
 
-  public subscript(position: Int) -> AgentTranscript<Metadata, ContextReference>.ToolCall {
+  public subscript(position: Int) -> AgentTranscript<ContextReference>.ToolCall {
     calls[position]
   }
 
@@ -145,7 +142,7 @@ extension AgentTranscript.ToolCalls: RandomAccessCollection, RangeReplaceableCol
     calls = []
   }
 
-  public mutating func replaceSubrange<C>(_ subrange: Range<Int>, with newElements: C) where C: Collection, C.Element == AgentTranscript<Metadata, ContextReference>.ToolCall {
+  public mutating func replaceSubrange<C>(_ subrange: Range<Int>, with newElements: C) where C: Collection, C.Element == AgentTranscript<ContextReference>.ToolCall {
     calls.replaceSubrange(subrange, with: newElements)
   }
 }
@@ -153,42 +150,42 @@ extension AgentTranscript.ToolCalls: RandomAccessCollection, RangeReplaceableCol
 public extension AgentTranscript {
   struct ToolCall: Sendable, Identifiable, Equatable {
     public var id: String
+    public var callId: String
     public var toolName: String
     public var arguments: GeneratedContent
     public var status: Status
-    package var metadata: Metadata.ToolCall
 
     package init(
-      id: String = UUID().uuidString,
+      id: String,
+      callId: String,
       toolName: String,
       arguments: GeneratedContent,
       status: Status,
-      metadata: Metadata.ToolCall,
     ) {
       self.id = id
+      self.callId = callId
       self.toolName = toolName
       self.arguments = arguments
       self.status = status
-      self.metadata = metadata
     }
   }
 
   struct ToolOutput: Sendable, Identifiable, Equatable {
     public var id: String
+    public var callId: String
     public var toolName: String
     public var segment: Segment
-    package var metadata: Metadata.ToolOutput
 
     public init(
-      id: String = UUID().uuidString,
+      id: String,
+      callId: String,
       toolName: String,
       segment: Segment,
-      metadata: Metadata.ToolOutput
     ) {
       self.id = id
+      self.callId = callId
       self.toolName = toolName
       self.segment = segment
-      self.metadata = metadata
     }
   }
 
@@ -196,18 +193,15 @@ public extension AgentTranscript {
     public var id: String
     public var segments: [Segment]
     public var status: Status
-    package var metadata: Metadata.Response
 
     public init(
-      id: String = UUID().uuidString,
+      id: String,
       segments: [Segment],
       status: Status,
-      metadata: Metadata.Response
     ) {
       self.id = id
       self.segments = segments
       self.status = status
-      self.metadata = metadata
     }
   }
 

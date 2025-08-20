@@ -1,8 +1,21 @@
 // By Dennis Müller
 
+import AgentSimulation
 import FoundationModels
 import SwiftAgent
 import SwiftUI
+
+struct WeatherToolMock: MockableAgentTool {
+  var tool: WeatherTool
+  
+  func mockArguments() -> WeatherTool.Arguments {
+    .init(location: "Freiburg")
+  }
+  
+  func mockOutput() async throws -> WeatherTool.Output {
+    return .init(location: "Freiburg", temperature: 0, condition: "", humidity: 0)
+  }
+}
 
 struct RootView: View {
   @State private var userInput = ""
@@ -114,9 +127,15 @@ struct RootView: View {
     toolCallsUsed = []
 
     do {
-      let response = try await agent.respond(to: userInput)
+      let response = try await agent.simulateResponse(
+        to: userInput,
+        steps: [
+          .toolRun( tool: WeatherToolMock(tool: WeatherTool())),
+          .response(content: "Hello")
+        ]
+      )
       agentResponse = response.content
-      
+
       let toolResolver = agent.transcript.toolResolver(for: tools)
       for entry in response.addedEntries {
         if case let .toolCalls(toolCalls) = entry {

@@ -9,17 +9,16 @@ public protocol AgentAdapter {
   associatedtype GenerationOptions: AdapterGenerationOptions
   associatedtype Model: AdapterModel
   associatedtype Configuration: AdapterConfiguration
-  associatedtype Metadata: AdapterMetadata
 
   init(tools: [any AgentTool], instructions: String, configuration: Configuration)
 
   func respond<Content, ContextReference>(
-    to prompt: AgentTranscript<Metadata, ContextReference>.Prompt,
+    to prompt: AgentTranscript<ContextReference>.Prompt,
     generating type: Content.Type,
     using model: Model,
-    including transcript: AgentTranscript<Metadata, ContextReference>,
+    including transcript: AgentTranscript<ContextReference>,
     options: GenerationOptions
-  ) -> AsyncThrowingStream<AgentTranscript<Metadata, ContextReference>.Entry, any Error> where Content: Generable, ContextReference: PromptContextReference
+  ) -> AsyncThrowingStream<AgentTranscript<ContextReference>.Entry, any Error> where Content: Generable, ContextReference: PromptContextReference
 }
 
 // MARK: - GenerationOptions
@@ -33,35 +32,6 @@ public protocol AdapterGenerationOptions {
 public protocol AdapterModel {
   static var `default`: Self { get }
 }
-
-// MARK: - Metadata
-
-public protocol AdapterMetadata: Sendable {
-  associatedtype Reasoning: ReasoningAdapterMetadata
-  associatedtype ToolCall: ToolCallAdapterMetadata
-  associatedtype ToolOutput: ToolOutputAdapterMetadata
-  associatedtype Response: ResponseAdapterMetadata
-}
-
-public protocol ReasoningAdapterMetadata: Codable, Sendable, Equatable {
-  var reasoningId: String { get }
-}
-
-public protocol ToolCallAdapterMetadata: Codable, Sendable, Equatable {
-  /// The provider specific identifier for the tool call.
-  ///
-  /// For example, OpenAI uses a "call_" prefixed id, while Anthropic uses a "toolu_" prefixed id.
-  var toolCallId: String { get }
-}
-
-public protocol ToolOutputAdapterMetadata: Codable, Sendable, Equatable {
-  /// The provider specific identifier for the tool call.
-  ///
-  /// For example, OpenAI uses a "call_" prefixed id, while Anthropic uses a "toolu_" prefixed id.
-  var toolCallId: String { get }
-}
-
-public protocol ResponseAdapterMetadata: Codable, Sendable, Equatable {}
 
 // MARK: Configuration
 
