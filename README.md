@@ -20,20 +20,17 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
 - [📖 Advanced Usage](#-advanced-usage)
   - [Prompt Context](#prompt-context)
   - [Tool Resolver](#tool-resolver)
-  - [Convenience Initializers](#convenience-initializers)
   - [Structured Output Generation](#structured-output-generation)
   - [Custom Generation Options](#custom-generation-options)
   - [Conversation History](#conversation-history)
   - [Agent Simulation](#agent-simulation)
 - [🔧 Configuration](#-configuration)
   - [OpenAI Configuration](#openai-configuration)
-  - [Custom Adapters](#custom-adapters)
   - [Logging](#logging)
 - [🧪 Development Status](#-development-status)
 - [📄 License](#-license)
 - [🙏 Acknowledgments](#-acknowledgments)
 
----
 
 ## ✨ Features
 
@@ -45,7 +42,6 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
 - **📊 Rich Logging** — Comprehensive, human-readable logging for debugging and monitoring
 - **🎛️ Flexible Configuration** — Fine-tune generation options, tools, and adapter settings
 
----
 
 ## 🚀 Quick Start
 
@@ -56,18 +52,17 @@ Add SwiftAgent to your Swift project:
 ```swift
 // Package.swift
 dependencies: [
-  .package(url: "https://github.com/SwiftedMind/SwiftAgent.git", branch: "main")
+  .package(url: "https://github.com/SwiftedMind/SwiftAgent.git", from: "0.4.0")
 ]
 ```
 
-Then import the provider module you need:
+Then import the provider target you need:
 
 ```swift
 // For OpenAI
 import OpenAIAgent
 
-// Core framework (for custom adapters)
-import SwiftAgent
+// Other providers coming soon
 ```
 
 ### Basic Usage
@@ -76,7 +71,7 @@ import SwiftAgent
 import OpenAIAgent
 import FoundationModels
 
-// Create an agent with OpenAI - multiple configuration options available
+// Create an agent with OpenAI
 let agent = OpenAIAgent(
   tools: [WeatherTool(), CalculatorTool()],
   instructions: "You are a helpful assistant."
@@ -91,18 +86,14 @@ let response = try await agent.respond(
 print(response.content)
 ```
 
-#### Alternative Configuration Methods
+#### Configuration Methods
 
 ```swift
-// Using default configuration (requires environment setup)
-let agent = OpenAIAgent(tools: tools, instructions: "...")
-
 // Using custom configuration
 let config = OpenAIAdapter.Configuration.direct(apiKey: "your-api-key")
 let agent = OpenAIAgent(tools: tools, instructions: "...", configuration: config)
 ```
 
----
 
 ## 🛠️ Building Tools
 
@@ -152,15 +143,15 @@ Separate user input from contextual information for cleaner prompt augmentation 
 import OpenAIAgent
 
 // Define your context types
-enum PromptContext: SwiftAgent.PromptContext, SwiftAgent.PromptRepresentable {
-  case vectorEmbedding(String)
+enum ContextSource: PromptContextSource, PromptRepresentable {
+  case vectorSearchResult(String)
   case documentContext(String)
   case searchResults([String])
   
   @PromptBuilder
   var promptRepresentation: Prompt {
     switch self {
-    case .vectorEmbedding(let content):
+    case .vectorSearchResult(let content):
       PromptTag("vector-embedding") { content }
     case .documentContext(let content):
       PromptTag("document") { content }
@@ -174,28 +165,26 @@ enum PromptContext: SwiftAgent.PromptContext, SwiftAgent.PromptRepresentable {
   }
 }
 
-// Create an agent that supports context
-let agent: Agent<OpenAIAdapter, PromptContext> = Agent(
-  adapter: OpenAIAdapter(tools: tools, instructions: "...", configuration: config)
-)
+// Create an agent with context support
+let agent = OpenAIAgent.withContext(ContextSource.self, tools: tools)
 
-// Respond with context - user input and context are separated in the transcript
+// Respond with context - user input and context are kept separated in the transcript
 let response = try await agent.respond(
   to: "What are the key features of SwiftUI?",
   supplying: [
-    .vectorEmbedding("SwiftUI declarative syntax..."),
+    .vectorSearchResult("SwiftUI declarative syntax..."),
     .documentContext("Apple's official SwiftUI documentation...")
   ]
 ) { input, context in
-  PromptTag("context", items: context)
+  PromptTag("context", items: context.sources)
   input
 }
 
 // The transcript now clearly separates user input from augmented context
 for entry in agent.transcript {
   if case let .prompt(prompt) = entry {
-    print("User input: \(prompt.content)")
-    print("Context items: \(prompt.context.count)")
+    print("User input: \(prompt.input)")
+    print("Context sources: \(prompt.sources.count)")
   }
 }
 ```
@@ -247,33 +236,6 @@ for entry in agent.transcript {
 }
 ```
 
-### Convenience Initializers
-
-OpenAIAgent provides streamlined initializers:
-
-```swift
-// Most convenient - direct API key
-let agent = OpenAIAgent(
-  tools: tools, 
-  instructions: "...",
-  apiKey: "your-api-key"
-)
-
-// Using configuration object  
-let agent = OpenAIAgent(
-  tools: tools,
-  instructions: "...",
-  configuration: config
-)
-
-// Basic usage with default configuration
-let agent = OpenAIAgent(tools: tools, instructions: "...")
-
-// Generic form for custom adapters (requires SwiftAgent import)
-import SwiftAgent
-let agent = Agent(adapter: CustomAdapter(...))
-```
-
 ### Structured Output Generation
 
 Generate structured data directly from agent responses:
@@ -305,11 +267,12 @@ for task in response.content.tasks {
 
 ### Custom Generation Options
 
+Each adapter defines its own set of generation options. For example:
+
 ```swift
-let options = GenerationOptions(
-  maxTokens: 1000,
+let options = OpenAIAdapter.GenerationOptions(
+  maxOutputTokens: 1000,
   temperature: 0.7,
-  allowedSteps: 10
 )
 
 let response = try await agent.respond(
@@ -394,39 +357,16 @@ The simulation system provides:
 ```swift
 import OpenAIAgent
 
-// Method 1: Direct API key in initializer (recommended)
-let agent = OpenAIAgent(
-  tools: tools,
-  instructions: "...",
-  apiKey: "sk-..."
-)
-
-// Method 2: Configuration object
+// Method 1: Configuration object
 let config = OpenAIAdapter.Configuration.direct(
   apiKey: "sk-...",
   baseURL: URL(string: "https://api.openai.com")!
 )
 let agent = OpenAIAgent(tools: tools, instructions: "...", configuration: config)
 
-// Method 3: Global default configuration
+// Method 2: Global default configuration
 OpenAIAdapter.Configuration.setDefaultConfiguration(config)
 let agent = OpenAIAgent(tools: tools, instructions: "...")
-```
-
-### Custom Adapters
-
-Create your own AI provider adapters:
-
-```swift
-import SwiftAgent
-
-// Implement the AgentAdapter protocol
-struct GeminiAdapter: AgentAdapter {
-  // Implementation details...
-}
-
-// Use with the core Agent class
-let agent = Agent(adapter: GeminiAdapter(...))
 ```
 
 ### Logging
@@ -434,6 +374,9 @@ let agent = Agent(adapter: GeminiAdapter(...))
 ```swift
 // Enable comprehensive logging
 AgentConfiguration.setLoggingEnabled(true)
+
+// Enable full request/response network logging
+AgentConfiguration.setNetworkLoggingEnabled(true)
 
 // Logs show:
 // 🟢 Agent start — model=gpt-5 | tools=weather, calculator
@@ -464,3 +407,4 @@ SwiftAgent is available under the MIT license. See [LICENSE](LICENSE) for more i
 ---
 
 *Made with ❤️ for the Swift community*
+
