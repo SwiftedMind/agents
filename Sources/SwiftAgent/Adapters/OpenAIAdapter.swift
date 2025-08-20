@@ -8,7 +8,7 @@ import OSLog
 
 public final class OpenAIAdapter: AgentAdapter {
   public typealias Model = OpenAI.Model
-  public typealias Transcript<Context: PromptContext> = AgentTranscript<Metadata, Context>
+  public typealias Transcript<ContextReference: PromptContextReference> = AgentTranscript<Metadata, ContextReference>
 
   private var tools: [any AgentTool]
   private var instructions: String = ""
@@ -92,14 +92,14 @@ public final class OpenAIAdapter: AgentAdapter {
     using model: Model = .default,
     including transcript: Transcript<Context>,
     options: GenerationOptions
-  ) -> AsyncThrowingStream<Transcript<Context>.Entry, any Error> where Content: Generable, Context: PromptContext {
+  ) -> AsyncThrowingStream<Transcript<Context>.Entry, any Error> where Content: Generable, Context: PromptContextReference {
     let setup = AsyncThrowingStream<Transcript<Context>.Entry, any Error>.makeStream()
 
     // Log start of an agent run
     AgentLog.start(
       model: String(describing: model),
       toolNames: tools.map(\.name),
-      promptPreview: prompt.content
+      promptPreview: prompt.input
     )
 
     let task = Task<Void, Never> {
@@ -127,7 +127,7 @@ public final class OpenAIAdapter: AgentAdapter {
     using model: Model = .default,
     options: GenerationOptions,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Content: Generable, Context: PromptContext {
+  ) async throws where Content: Generable, Context: PromptContextReference {
     var generatedTranscript = Transcript<Context>()
     let allowedSteps = 20
     var currentStep = 0
@@ -184,7 +184,7 @@ public final class OpenAIAdapter: AgentAdapter {
     type: Content.Type,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Content: Generable, Context: PromptContext {
+  ) async throws where Content: Generable, Context: PromptContextReference {
     switch output {
     case let .message(message):
       try await handleMessage(
@@ -215,7 +215,7 @@ public final class OpenAIAdapter: AgentAdapter {
     type: Content.Type,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Content: Generable, Context: PromptContext {
+  ) async throws where Content: Generable, Context: PromptContextReference {
     if type == String.self {
       try await processStringResponse(
         message,
@@ -236,7 +236,7 @@ public final class OpenAIAdapter: AgentAdapter {
     _ message: Message.Output,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Context: PromptContext {
+  ) async throws where Context: PromptContextReference {
     let response = Transcript<Context>.Response(
       segments: message.content.compactMap(\.asText).map { .text(Transcript.TextSegment(content: $0)) },
       status: transcriptStatusFromOpenAIStatus(message.status),
@@ -255,7 +255,7 @@ public final class OpenAIAdapter: AgentAdapter {
     type: Content.Type,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Content: Generable, Context: PromptContext {
+  ) async throws where Content: Generable, Context: PromptContextReference {
     guard let content = message.content.first else {
       let errorContext = GenerationError.EmptyMessageContentContext(expectedType: String(describing: type))
       throw GenerationError.emptyMessageContent(errorContext)
@@ -293,7 +293,7 @@ public final class OpenAIAdapter: AgentAdapter {
     _ functionCall: Item.FunctionCall,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Context: PromptContext {
+  ) async throws where Context: PromptContextReference {
     let generatedContent = try GeneratedContent(json: functionCall.arguments)
 
     let toolCall = Transcript<Context>.ToolCall(
@@ -348,7 +348,7 @@ public final class OpenAIAdapter: AgentAdapter {
     _ reasoning: Item.Reasoning,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Context: PromptContext {
+  ) async throws where Context: PromptContextReference {
     let summary = reasoning.summary.map { summary in
       switch summary {
       case let .text(text):
@@ -383,7 +383,7 @@ public final class OpenAIAdapter: AgentAdapter {
     generating type: Content.Type,
     using model: Model,
     options: GenerationOptions
-  ) -> OpenAI.Request where Content: Generable, Context: PromptContext {
+  ) -> OpenAI.Request where Content: Generable, Context: PromptContextReference {
     let textConfig: TextConfig? = {
       if type == String.self {
         return nil
@@ -437,7 +437,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusFromOpenAIStatus<Context>(
     _ status: Message.Status
-  ) -> Transcript<Context>.Status where Context: PromptContext {
+  ) -> Transcript<Context>.Status where Context: PromptContextReference {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -447,7 +447,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusFromOpenAIStatus<Context>(
     _ status: Item.FunctionCall.Status
-  ) -> Transcript<Context>.Status where Context: PromptContext {
+  ) -> Transcript<Context>.Status where Context: PromptContextReference {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -457,7 +457,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusFromOpenAIStatus<Context>(
     _ status: Item.Reasoning.Status?
-  ) -> Transcript<Context>.Status? where Context: PromptContext {
+  ) -> Transcript<Context>.Status? where Context: PromptContextReference {
     guard let status else { return nil }
 
     switch status {
@@ -469,7 +469,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusToMessageStatus<Context>(
     _ status: Transcript<Context>.Status
-  ) -> Message.Status where Context: PromptContext {
+  ) -> Message.Status where Context: PromptContextReference {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -479,7 +479,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusToFunctionCallStatus<Context>(
     _ status: Transcript<Context>.Status
-  ) -> Item.FunctionCall.Status where Context: PromptContext {
+  ) -> Item.FunctionCall.Status where Context: PromptContextReference {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -489,7 +489,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusToReasoningStatus<Context>(
     _ status: Transcript<Context>.Status?
-  ) -> Item.Reasoning.Status? where Context: PromptContext {
+  ) -> Item.Reasoning.Status? where Context: PromptContextReference {
     guard let status else { return nil }
 
     switch status {
@@ -499,7 +499,7 @@ public final class OpenAIAdapter: AgentAdapter {
     }
   }
 
-  func transcriptToListItems<Context>(_ transcript: Transcript<Context>) -> [Input.ListItem] where Context: PromptContext {
+  func transcriptToListItems<Context>(_ transcript: Transcript<Context>) -> [Input.ListItem] where Context: PromptContextReference {
     var listItems: [Input.ListItem] = []
 
     for entry in transcript {

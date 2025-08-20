@@ -3,12 +3,13 @@
 import Foundation
 import FoundationModels
 
-public typealias OpenAIAgent<Context: PromptContext> = Agent<OpenAIAdapter, Context>
+public typealias OpenAIAgent<ContextReference: PromptContextReference> = Agent<OpenAIAdapter, ContextReference>
 
 @Observable @MainActor
-public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
-  public typealias Transcript = AgentTranscript<Adapter.Metadata, Context>
-  public typealias Response<Content: Generable> = AgentResponse<Adapter, Context, Content>
+public final class Agent<Adapter: AgentAdapter, ContextReference: PromptContextReference> {
+  public typealias Transcript = AgentTranscript<Adapter.Metadata, ContextReference>
+  public typealias Context = PromptContext<ContextReference>
+  public typealias Response<Content: Generable> = AgentResponse<Adapter, ContextReference, Content>
 
   private let adapter: Adapter
 
@@ -58,7 +59,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
       }
     }
 
-    return AgentResponse<Adapter, Context, String>(
+    return AgentResponse<Adapter, ContextReference, String>(
       content: responseContent.joined(separator: "\n"),
       addedEntries: addedEntities
     )
@@ -96,7 +97,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContext> {
           case let .structure(structuredSegment):
             // We can return here since a structured response can only happen once
             // TODO: Handle errors here in some way
-            return try AgentResponse<Adapter, Context, Content>(
+            return try AgentResponse<Adapter, ContextReference, Content>(
               content: Content(structuredSegment.content),
               addedEntries: addedEntities
             )
@@ -117,7 +118,7 @@ public extension Agent {
 
   convenience init(
     using adapter: Adapter.Type,
-    supplying context: Context.Type,
+    supplying context: ContextReference.Type,
     tools: [any AgentTool] = [],
     instructions: String = "",
     configuration: Adapter.Configuration = .default
@@ -130,14 +131,14 @@ public extension Agent {
     tools: [any AgentTool] = [],
     instructions: String = "",
     configuration: Adapter.Configuration = .default
-  ) where Context == EmptyPromptContext {
+  ) where ContextReference == EmptyPromptContextReference {
     self.init(adapter: Adapter(tools: tools, instructions: instructions, configuration: configuration))
   }
 
   // MARK: OpenAI Initializers
 
   convenience init(
-    supplying context: Context.Type,
+    supplying context: ContextReference.Type,
     tools: [any AgentTool] = [],
     instructions: String = "",
     configuration: Adapter.Configuration = .default
@@ -149,7 +150,7 @@ public extension Agent {
     tools: [any AgentTool] = [],
     instructions: String = "",
     configuration: Adapter.Configuration = .default
-  ) where Adapter == OpenAIAdapter, Context == EmptyPromptContext {
+  ) where Adapter == OpenAIAdapter, ContextReference == EmptyPromptContextReference {
     self.init(adapter: Adapter(tools: tools, instructions: instructions, configuration: configuration))
   }
 }
@@ -163,7 +164,7 @@ public extension Agent {
     using model: Adapter.Model = .default,
     options: Adapter.GenerationOptions = Adapter.GenerationOptions()
   ) async throws -> Response<String> {
-    let prompt = Transcript.Prompt(content: prompt, embeddedPrompt: prompt)
+    let prompt = Transcript.Prompt(input: prompt, embeddedPrompt: prompt)
     return try await processStringResponse(from: prompt, using: model, options: options)
   }
 
@@ -196,7 +197,7 @@ public extension Agent {
     using model: Adapter.Model = .default,
     options: Adapter.GenerationOptions = Adapter.GenerationOptions()
   ) async throws -> Response<Content> where Content: Generable {
-    let prompt = Transcript.Prompt(content: prompt, embeddedPrompt: prompt)
+    let prompt = Transcript.Prompt(input: prompt, embeddedPrompt: prompt)
     return try await processStructuredResponse(from: prompt, generating: type, using: model, options: options)
   }
 
@@ -237,13 +238,16 @@ public extension Agent {
   @discardableResult
   func respond(
     to input: String,
-    supplying context: [Context],
+    supplying contextItems: [ContextReference],
     using model: Adapter.Model = .default,
     options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
-    @PromptBuilder embeddingInto prompt: @Sendable (_ input: String, _ context: [Context]) -> Prompt
+    @PromptBuilder embeddingInto prompt: @Sendable (_ input: String, _ context: Context) -> Prompt
   ) async throws -> Response<String> {
+    
+    let context = Context(references: contextItems, linkPreviews: [])
+    
     let prompt = Transcript.Prompt(
-      content: input,
+      input: input,
       context: context,
       embeddedPrompt: prompt(input, context).formatted()
     )
@@ -253,14 +257,17 @@ public extension Agent {
   @discardableResult
   func respond<Content>(
     to input: String,
-    supplying context: [Context],
+    supplying contextItems: [ContextReference],
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
     options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
-    @PromptBuilder embeddingInto prompt: @Sendable (_ prompt: String, _ embeddables: [Context]) -> Prompt
+    @PromptBuilder embeddingInto prompt: @Sendable (_ prompt: String, _ context: Context) -> Prompt
   ) async throws -> Response<Content> where Content: Generable {
+    
+    let context = Context(references: contextItems, linkPreviews: [])
+    
     let prompt = Transcript.Prompt(
-      content: input,
+      input: input,
       context: context,
       embeddedPrompt: prompt(input, context).formatted()
     )
@@ -270,10 +277,10 @@ public extension Agent {
 
 // MARK: - AgentResponse
 
-public struct AgentResponse<Adapter: AgentAdapter, Context: PromptContext, Content> where Content: Generable {
+public struct AgentResponse<Adapter: AgentAdapter, ContextReference: PromptContextReference, Content> where Content: Generable {
   /// The response content.
   public var content: Content
 
   /// The transcript entries that the prompt produced.
-  public var addedEntries: [Agent<Adapter, Context>.Transcript.Entry]
+  public var addedEntries: [Agent<Adapter, ContextReference>.Transcript.Entry]
 }

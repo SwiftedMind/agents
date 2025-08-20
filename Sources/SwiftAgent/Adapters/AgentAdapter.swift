@@ -13,13 +13,13 @@ public protocol AgentAdapter {
 
   init(tools: [any AgentTool], instructions: String, configuration: Configuration)
 
-  func respond<Content, Context>(
-    to prompt: AgentTranscript<Metadata, Context>.Prompt,
+  func respond<Content, ContextReference>(
+    to prompt: AgentTranscript<Metadata, ContextReference>.Prompt,
     generating type: Content.Type,
     using model: Model,
-    including transcript: AgentTranscript<Metadata, Context>,
+    including transcript: AgentTranscript<Metadata, ContextReference>,
     options: GenerationOptions
-  ) -> AsyncThrowingStream<AgentTranscript<Metadata, Context>.Entry, any Error> where Content: Generable, Context: PromptContext
+  ) -> AsyncThrowingStream<AgentTranscript<Metadata, ContextReference>.Entry, any Error> where Content: Generable, ContextReference: PromptContextReference
 }
 
 // MARK: - GenerationOptions

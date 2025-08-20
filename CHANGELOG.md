@@ -15,7 +15,45 @@
   let response = try await agent.respond(to: prompt, options: options)
   ```
 
+- **Enhanced PromptContext System**: The `PromptContext` protocol has been replaced with a generic struct wrapper that provides both user-defined context references and SDK-generated context data (like link previews). User types now conform to `PromptContextReference` instead of `PromptContext`:
+  ```swift
+  // Before
+  enum MyContext: SwiftAgent.PromptContext {
+    case vectorEmbedding(String)
+    case searchResults([String])
+  }
+  
+  // Now
+  enum MyContextReference: PromptContextReference {
+    case vectorEmbedding(String)
+    case searchResults([String])
+  }
+  ```
+
+- **Updated Agent Generic Parameters**: Agents now use `PromptContextReference` types instead of `PromptContext`:
+  ```swift
+  // Before
+  let agent = OpenAIAgent(supplying: MyContext.self, tools: tools)
+  
+  // Now
+  let agent = OpenAIAgent(supplying: MyContextReference.self, tools: tools)
+  ```
+
+- **Simplified AgentTranscript.Prompt**: Removed the `GenerationOptions` field from `AgentTranscript.Prompt` as generation options are now adapter-specific and don't belong in the transcript structure.
+
 ### Added
+
+- **Link Preview Support**: The new `PromptContext` struct includes `linkPreviews` that can automatically fetch and include OpenGraph data from URLs in user input (foundation for future URL context extraction)
+
+- **Structured Context Access**: The `PromptContext<Reference>` wrapper provides clean separation between user-defined context references and SDK-generated context data:
+  ```swift
+  for entry in agent.transcript {
+    if case let .prompt(prompt) = entry {
+      print("User references: \(prompt.context.references)")
+      print("Link previews: \(prompt.context.linkPreviews)")
+    }
+  }
+  ```
 
 - **Comprehensive OpenAI Configuration**: The new `OpenAIAdapter.GenerationOptions` provides access to all OpenAI API parameters including:
   - `include` - Additional outputs like reasoning or logprobs
@@ -34,11 +72,31 @@
 ### Enhanced
 
 - **Type Safety**: Generation options are now compile-time validated and specific to each adapter implementation
-- **Code Organization**: Moved `OpenAIAdapter.Metadata` to an extension for better code structure
 
 ### Migration Guide
 
-1. **Update Generation Options**: Replace generic `GenerationOptions` with adapter-specific options:
+1. **Update Context Types**: Rename your context protocols to conform to `PromptContextReference` instead of `PromptContext`:
+   ```swift
+   // Change protocol conformance
+   enum MyContextReference: PromptContextReference { ... }
+   ```
+
+2. **Update Agent Initialization**: Use the new context reference type:
+   ```swift
+   let agent = OpenAIAgent(supplying: MyContextReference.self, tools: tools)
+   ```
+
+3. **Update Context Usage**: Access context through the new structured format:
+   ```swift
+   // In prompt builders, context is now PromptContext<MyContextReference>
+   ) { input, context in
+     // Access user-defined context references
+     PromptTag("context", items: context.references)
+     // Link previews are available at context.linkPreviews
+   }
+   ```
+
+4. **Update Generation Options**: Replace generic `GenerationOptions` with adapter-specific options:
    ```swift
    // Update import if needed
    let options = OpenAIAdapter.GenerationOptions(

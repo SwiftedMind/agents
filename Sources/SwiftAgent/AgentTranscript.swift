@@ -3,7 +3,7 @@
 import Foundation
 import FoundationModels
 
-public struct AgentTranscript<Metadata: AdapterMetadata, Context: PromptContext>: Sendable, Equatable {
+public struct AgentTranscript<Metadata: AdapterMetadata, ContextReference: PromptContextReference>: Sendable, Equatable {
   public var entries: [Entry]
 
   public init(entries: [Entry] = []) {
@@ -64,23 +64,20 @@ public extension AgentTranscript {
 
   struct Prompt: Sendable, Identifiable, Equatable {
     public var id: String
-    public var content: String
-    public var context: [Context]
-    public var options: GenerationOptions
+    public var input: String
+    public var context: PromptContext<ContextReference>
     package var embeddedPrompt: String
-    
+
     package init(
       id: String = UUID().uuidString,
-      content: String,
-      context: [Context] = [],
-      embeddedPrompt: String,
-      options: GenerationOptions = .init(),
+      input: String,
+      context: PromptContext<ContextReference> = .empty,
+      embeddedPrompt: String
     ) {
       self.id = id
-      self.content = content
+      self.input = input
       self.context = context
       self.embeddedPrompt = embeddedPrompt
-      self.options = options
     }
   }
 
@@ -131,7 +128,7 @@ extension AgentTranscript.ToolCalls: RandomAccessCollection, RangeReplaceableCol
   public var startIndex: Int { calls.startIndex }
   public var endIndex: Int { calls.endIndex }
 
-  public subscript(position: Int) -> AgentTranscript<Metadata, Context>.ToolCall {
+  public subscript(position: Int) -> AgentTranscript<Metadata, ContextReference>.ToolCall {
     calls[position]
   }
 
@@ -148,7 +145,7 @@ extension AgentTranscript.ToolCalls: RandomAccessCollection, RangeReplaceableCol
     calls = []
   }
 
-  public mutating func replaceSubrange<C>(_ subrange: Range<Int>, with newElements: C) where C: Collection, C.Element == AgentTranscript<Metadata, Context>.ToolCall {
+  public mutating func replaceSubrange<C>(_ subrange: Range<Int>, with newElements: C) where C: Collection, C.Element == AgentTranscript<Metadata, ContextReference>.ToolCall {
     calls.replaceSubrange(subrange, with: newElements)
   }
 }

@@ -10,7 +10,7 @@ struct RootView: View {
   @State private var toolCallsUsed: [String] = []
   @State private var isLoading = false
   @State private var errorMessage: String?
-  @State private var agent: OpenAIAgent<EmptyPromptContext>?
+  @State private var agent: OpenAIAgent<EmptyPromptContextReference>?
 
   // MARK: - Tools
 
@@ -41,7 +41,7 @@ struct RootView: View {
           }
           .disabled(isLoading || userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        
+
         if isLoading {
           Section {
             HStack {
