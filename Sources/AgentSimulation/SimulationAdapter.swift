@@ -7,24 +7,30 @@ import OpenAI
 import OSLog
 import SwiftAgent
 
-/*
-
- TODO: Add configuration options like simulated delay between responses
-
- */
-
 @MainActor
 public struct SimulationAdapter {
   public typealias Model = OpenAI.Model
   public typealias Transcript<ContextReference: PromptContextReference> = AgentTranscript<ContextReference>
 
-  public init() {}
+  public struct Configuration: Sendable {
+    /// The delay between simulated model generations.
+    public var generationDelay: Duration
+
+    public init(generationDelay: Duration = .milliseconds(500)) {
+      self.generationDelay = generationDelay
+    }
+  }
+
+  private let configuration: Configuration
+
+  public init(configuration: Configuration = Configuration()) {
+    self.configuration = configuration
+  }
 
   func respond<Content, Context>(
     to prompt: Transcript<Context>.Prompt,
     generating type: Content.Type,
-    including transcript: Transcript<Context>,
-    steps: [SimulationStep<Content>]
+    generations: [SimulatedGeneration<Content>]
   ) -> AsyncThrowingStream<Transcript<Context>.Entry, any Error>
     where Content: MockableGenerable, Context: PromptContextReference {
     let setup = AsyncThrowingStream<Transcript<Context>.Entry, any Error>.makeStream()
@@ -32,16 +38,17 @@ public struct SimulationAdapter {
     // Log the start of a simulated run for visibility
     AgentLog.start(
       model: "simulated",
-      toolNames: steps.compactMap(\.toolName),
+      toolNames: generations.compactMap(\.toolName),
       promptPreview: prompt.input
     )
 
     let task = Task<Void, Never> {
       do {
-        for (index, step) in steps.enumerated() {
+        for (index, generation) in generations.enumerated() {
           AgentLog.stepRequest(step: index + 1)
+          try await Task.sleep(for: configuration.generationDelay)
 
-          switch step {
+          switch generation {
           case let .reasoning(summary):
             try await handleReasoning(
               summary: summary,

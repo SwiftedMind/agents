@@ -129,7 +129,7 @@ struct RootView: View {
     do {
       let response = try await agent.simulateResponse(
         to: userInput,
-        steps: [
+        generations: [
           .toolRun( tool: WeatherToolMock(tool: WeatherTool())),
           .response(content: "Hello")
         ]

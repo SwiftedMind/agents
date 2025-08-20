@@ -9,21 +9,25 @@ public extension Agent {
   private var simulationAdapter: SimulationAdapter {
     SimulationAdapter()
   }
+
+  private func simulationAdapter(with configuration: SimulationAdapter.Configuration) -> SimulationAdapter {
+    SimulationAdapter(configuration: configuration)
+  }
   
   @discardableResult
   func simulateResponse(
     to prompt: String,
-    steps: [SimulationStep<String>]
+    generations: [SimulatedGeneration<String>],
+    configuration: SimulationAdapter.Configuration = SimulationAdapter.Configuration()
   ) async throws -> Response<String> {
     let transcriptPrompt = Transcript.Prompt(input: prompt, embeddedPrompt: prompt)
     let promptEntry = Transcript.Entry.prompt(transcriptPrompt)
     transcript.append(promptEntry)
 
-    let stream = simulationAdapter.respond(
+    let stream = simulationAdapter(with: configuration).respond(
       to: transcriptPrompt,
       generating: String.self,
-      including: transcript,
-      steps: steps
+      generations: generations
     )
     var responseContent: [String] = []
     var addedEntities: [Transcript.Entry] = []
@@ -53,17 +57,17 @@ public extension Agent {
   @discardableResult
   func simulateResponse<Content>(
     to prompt: String,
-    steps: [SimulationStep<Content>]
+    generations: [SimulatedGeneration<Content>],
+    configuration: SimulationAdapter.Configuration = SimulationAdapter.Configuration()
   ) async throws -> Response<Content> where Content: MockableGenerable {
     let transcriptPrompt = Transcript.Prompt(input: prompt, embeddedPrompt: prompt)
     let promptEntry = Transcript.Entry.prompt(transcriptPrompt)
     transcript.append(promptEntry)
 
-    let stream = simulationAdapter.respond(
+    let stream = simulationAdapter(with: configuration).respond(
       to: transcriptPrompt,
       generating: Content.self,
-      including: transcript,
-      steps: steps
+      generations: generations
     )
     var addedEntities: [Transcript.Entry] = []
 
@@ -93,32 +97,36 @@ public extension Agent {
   @discardableResult
   func simulateResponse(
     to prompt: SwiftAgent.Prompt,
-    steps: [SimulationStep<String>]
+    generations: [SimulatedGeneration<String>],
+    configuration: SimulationAdapter.Configuration = SimulationAdapter.Configuration()
   ) async throws -> Response<String> {
-    try await simulateResponse(to: prompt.formatted(), steps: steps)
+    try await simulateResponse(to: prompt.formatted(), generations: generations, configuration: configuration)
   }
 
   @discardableResult
   func simulateResponse<Content>(
     to prompt: SwiftAgent.Prompt,
-    steps: [SimulationStep<Content>]
+    generations: [SimulatedGeneration<Content>],
+    configuration: SimulationAdapter.Configuration = SimulationAdapter.Configuration()
   ) async throws -> Response<Content> where Content: MockableGenerable {
-    try await simulateResponse(to: prompt.formatted(), steps: steps)
+    try await simulateResponse(to: prompt.formatted(), generations: generations, configuration: configuration)
   }
 
   @discardableResult
   func simulateResponse(
-    steps: [SimulationStep<String>],
+    generations: [SimulatedGeneration<String>],
+    configuration: SimulationAdapter.Configuration = SimulationAdapter.Configuration(),
     @SwiftAgent.PromptBuilder prompt: () throws -> SwiftAgent.Prompt
   ) async throws -> Response<String> {
-    try await simulateResponse(to: prompt().formatted(), steps: steps)
+    try await simulateResponse(to: prompt().formatted(), generations: generations, configuration: configuration)
   }
 
   @discardableResult
   func simulateResponse<Content>(
-    steps: [SimulationStep<Content>],
+    generations: [SimulatedGeneration<Content>],
+    configuration: SimulationAdapter.Configuration = SimulationAdapter.Configuration(),
     @SwiftAgent.PromptBuilder prompt: () throws -> SwiftAgent.Prompt
   ) async throws -> Response<Content> where Content: MockableGenerable {
-    try await simulateResponse(to: prompt().formatted(), steps: steps)
+    try await simulateResponse(to: prompt().formatted(), generations: generations, configuration: configuration)
   }
 }
