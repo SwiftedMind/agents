@@ -1,10 +1,10 @@
 # Changelog
 
-## [0.6.0]
+## [0.5.0]
 
 ### Breaking Changes
 
-- **Modular Architecture**: SwiftAgent has been restructured into separate provider-specific modules. The core `SwiftAgent` framework is now provider-agnostic, with OpenAI functionality moved to the dedicated `OpenAIAgent` module:
+- **Modular Architecture**: SwiftAgent has been restructured into separate provider-specific target. The core `SwiftAgent` framework is now provider-agnostic, with OpenAI functionality moved to the dedicated `OpenAIAgent` target:
   ```swift
   // Before
   import SwiftAgent
@@ -14,101 +14,6 @@
   import OpenAIAgent
   let agent = OpenAIAgent(tools: tools, instructions: "...")
   ```
-
-- **Import Changes**: Users must now import the appropriate provider module instead of the core framework:
-  - For OpenAI: `import OpenAIAgent` 
-  - For custom adapters: `import SwiftAgent`
-
-- **Agent Initializer**: The core `Agent.init(adapter:)` initializer is now public to support external adapter implementations
-
-### Added
-
-- **OpenAIAgent Module**: New dedicated module containing:
-  - `OpenAIAdapter` with full OpenAI API integration
-  - `OpenAIAgent` typealias for convenient agent creation
-  - Convenient initializers with direct API key support:
-    ```swift
-    // Direct API key configuration
-    let agent = OpenAIAgent(
-      tools: tools,
-      instructions: "...",
-      apiKey: "your-api-key"
-    )
-    
-    // Configuration object
-    let agent = OpenAIAgent(
-      tools: tools, 
-      instructions: "...",
-      configuration: config
-    )
-    
-    // Default configuration
-    let agent = OpenAIAgent(tools: tools, instructions: "...")
-    ```
-
-- **Future Provider Support**: The new architecture enables easy addition of other AI providers:
-  - `GeminiSwiftAgent` (future)
-  - `AnthropicSwiftAgent` (future)
-  - Custom provider implementations
-
-- **Enhanced Package Structure**: 
-  - Core `SwiftAgent` - Provider-agnostic framework
-  - `OpenAIAgent` - OpenAI-specific implementation
-  - `AgentSimulation` - Testing and simulation utilities
-
-### Enhanced
-
-- **Provider Agnostic Core**: The core SwiftAgent framework is now completely independent of any AI provider, making it easier to add new providers
-- **Cleaner Dependencies**: OpenAI dependencies are isolated to the OpenAIAgent module
-- **Better Modularity**: Each provider can have its own specific features and configuration options
-
-### Migration Guide
-
-1. **Update Imports**: Change your import statements to use the appropriate provider module:
-   ```swift
-   // Replace this
-   import SwiftAgent
-   
-   // With this for OpenAI
-   import OpenAIAgent
-   
-   // Or this for custom adapters
-   import SwiftAgent
-   ```
-
-2. **Agent Creation**: Agent creation syntax remains the same, but now uses the provider-specific module:
-   ```swift
-   // This still works the same way
-   let agent = OpenAIAgent(tools: tools, instructions: "...")
-   
-   // But now benefits from new convenience initializers
-   let agent = OpenAIAgent(
-     tools: tools,
-     instructions: "...", 
-     apiKey: "your-api-key"
-   )
-   ```
-
-3. **Configuration**: Configuration methods are now provider-specific and more convenient:
-   ```swift
-   // Before - global configuration
-   let config = OpenAIAdapter.Configuration.direct(apiKey: "...")
-   OpenAIAdapter.Configuration.setDefaultConfiguration(config)
-   let agent = OpenAIAgent(tools: tools, instructions: "...")
-   
-   // Now - can configure directly in initializer (recommended)
-   let agent = OpenAIAgent(
-     tools: tools,
-     instructions: "...",
-     apiKey: "your-api-key"
-   )
-   ```
-
-4. **Package Dependencies**: Your Package.swift remains the same - the SwiftAgent package now includes both core and OpenAI modules
-
-## [0.5.0]
-
-### Breaking Changes
 
 - **Adapter-Specific Generation Options**: Replaced the generic `GenerationOptions` struct with adapter-specific generation options. Each adapter now defines its own `GenerationOptions` type as an associated type, providing better type safety and access to adapter-specific parameters:
   ```swift
@@ -121,37 +26,49 @@
   let response = try await agent.respond(to: prompt, options: options)
   ```
 
-- **Enhanced PromptContext System**: The `PromptContext` protocol has been replaced with a generic struct wrapper that provides both user-defined context references and SDK-generated context data (like link previews). User types now conform to `PromptContextReference` instead of `PromptContext`:
+- **Enhanced PromptContext System**: The `PromptContext` protocol has been replaced with a generic struct wrapper that provides both user-written input and app or SDK generated context data (like link previews or vector search results). User types now conform to `PromptContextSource` instead of `PromptContext`:
   ```swift
   // Before
-  enum MyContext: SwiftAgent.PromptContext {
-    case vectorEmbedding(String)
+  enum MyContext: PromptContext {
+    case vectorSearchResult(String)
     case searchResults([String])
   }
   
   // Now
-  enum MyContextReference: PromptContextReference {
-    case vectorEmbedding(String)
+  enum ContextSource: PromptContextSource {
+    case vectorSearchResult(String)
     case searchResults([String])
   }
   ```
 
-- **Updated Agent Generic Parameters**: Agents now use `PromptContextReference` types instead of `PromptContext`:
+- **Updated Agent Generic Parameters**: Agents now require `PromptContextSource` types instead of `PromptContext` and are initialized via a static `withContext(:tools:instructions:)` method on `OpenAIAgent`:
   ```swift
   // Before
   let agent = OpenAIAgent(supplying: MyContext.self, tools: tools)
   
   // Now
-  let agent = OpenAIAgent(supplying: MyContextReference.self, tools: tools)
+  let agent = OpenAIAgent.withContext(ContextSource.self, tools: tools)
   ```
 
 - **Simplified AgentTranscript.Prompt**: Removed the `GenerationOptions` field from `AgentTranscript.Prompt` as generation options are now adapter-specific and don't belong in the transcript structure.
 
 ### Added
 
+- **OpenAIAgent Target**: New dedicated target containing:
+  - `OpenAIAdapter` with full OpenAI API integration
+  - `OpenAIAgent` typealias for to create agents for the OpenAI adapter
+    ```swift
+    // Configuration object
+    let agent = OpenAIAgent(
+      tools: tools, 
+      instructions: "...",
+      configuration: config
+    )
+    ```
+
 - **Link Preview Support**: The new `PromptContext` struct includes `linkPreviews` that can automatically fetch and include OpenGraph data from URLs in user input (foundation for future URL context extraction)
 
-- **Structured Context Access**: The `PromptContext<Reference>` wrapper provides clean separation between user-defined context references and SDK-generated context data:
+- **Structured Context Access**: The `PromptContext<Reference>` wrapper provides clean separation between user-written input text and app or SDK generated context data:
   ```swift
   for entry in agent.transcript {
     if case let .prompt(prompt) = entry {
@@ -205,32 +122,40 @@
 
 ### Enhanced
 
-- **Type Safety**: Generation options are now compile-time validated and specific to each adapter implementation
+- **Type Safety**: Generation options are now compile-time and run-time validated and specific to each adapter implementation
 
 ### Migration Guide
 
-1. **Update Context Types**: Rename your context protocols to conform to `PromptContextReference` instead of `PromptContext`:
+1. **Update Imports**: Change your import statements to use the appropriate provider target:
+   ```swift
+   // Replace this
+   import SwiftAgent
+   
+   // With this for OpenAI
+   import OpenAIAgent
+   ```
+
+2. **Update Context Types**: Rename your context protocols to conform to `PromptContextSource` instead of `PromptContext`:
    ```swift
    // Change protocol conformance
-   enum MyContextReference: PromptContextReference { ... }
+   enum ContextSource: PromptContextSource { ... }
    ```
 
-2. **Update Agent Initialization**: Use the new context reference type:
+3. **Update Agent Initialization**: Use the new context reference type:
    ```swift
-   let agent = OpenAIAgent(supplying: MyContextReference.self, tools: tools)
+   let agent = OpenAIAgent.withContext(ContextSource.self, tools: tools)
    ```
 
-3. **Update Context Usage**: Access context through the new structured format:
+4. **Update Context Usage**: Access context through the new structured format:
    ```swift
-   // In prompt builders, context is now PromptContext<MyContextReference>
+   // In prompt builders, context is now of type PromptContext<ContextSource>
    ) { input, context in
-     // Access user-defined context references
-     PromptTag("context", items: context.references)
-     // Link previews are available at context.linkPreviews
+     // Access app-defined context sources
+     PromptTag("context", items: context.sources)
    }
    ```
 
-4. **Update Generation Options**: Replace generic `GenerationOptions` with adapter-specific options:
+5. **Update Generation Options**: Replace generic `GenerationOptions` with adapter-specific options:
    ```swift
    // Update import if needed
    let options = OpenAIAdapter.GenerationOptions(
@@ -238,16 +163,6 @@
      maxOutputTokens: 1000,
      reasoning: .init(effort: .medium)
    )
-   ```
-
-2. **Custom Adapters**: If you have custom adapters, implement the `GenerationOptions` associated type:
-   ```swift
-   public protocol MyCustomAdapter: AgentAdapter {
-     struct GenerationOptions: AdapterGenerationOptions {
-       // Your custom options
-       public init() {}
-     }
-   }
    ```
 
 ## [0.4.1]
