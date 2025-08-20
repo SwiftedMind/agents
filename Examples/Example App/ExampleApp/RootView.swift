@@ -108,14 +108,12 @@ struct RootView: View {
   private func askAgent() async {
     guard let agent, !userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
-    userInput = ""
     isLoading = true
     errorMessage = nil
     agentResponse = ""
     toolCallsUsed = []
 
     do {
-      
       let response = try await agent.respond(
         to: userInput,
         supplying: [.currentDate(Date())],
@@ -134,7 +132,9 @@ struct RootView: View {
           input
         }
       }
+      
       agentResponse = response.content
+      userInput = ""
 
       let toolResolver = agent.transcript.toolResolver(for: tools)
       for entry in response.addedEntries {

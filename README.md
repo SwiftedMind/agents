@@ -80,20 +80,20 @@ let agent = OpenAIAgent(
 // Run your agent
 let response = try await agent.respond(
   to: "What's the weather like in San Francisco?",
-  using: .gpt5
+  using: .gpt5,
+  options: .init(include: [.encryptedReasoning])
 )
 
 print(response.content)
 ```
 
-#### Configuration Methods
+#### Alternative Configuration Methods
 
 ```swift
 // Using custom configuration
 let config = OpenAIAdapter.Configuration.direct(apiKey: "your-api-key")
 let agent = OpenAIAgent(tools: tools, instructions: "...", configuration: config)
 ```
-
 
 ## 🛠️ Building Tools
 
@@ -174,7 +174,8 @@ let response = try await agent.respond(
   supplying: [
     .vectorSearchResult("SwiftUI declarative syntax..."),
     .documentContext("Apple's official SwiftUI documentation...")
-  ]
+  ],
+  options: .init(include: [.encryptedReasoning])
 ) { input, context in
   PromptTag("context", items: context.sources)
   input
@@ -256,7 +257,8 @@ struct Task {
 let response = try await agent.respond(
   to: "Create a todo list for planning a vacation",
   generating: TaskList.self,
-  using: .gpt5
+  using: .gpt5,
+  options: .init(include: [.encryptedReasoning])
 )
 
 // response.content is now a strongly-typed TaskList
@@ -273,6 +275,7 @@ Each adapter defines its own set of generation options. For example:
 let options = OpenAIAdapter.GenerationOptions(
   maxOutputTokens: 1000,
   temperature: 0.7,
+  include: [.encryptedReasoning]
 )
 
 let response = try await agent.respond(
@@ -288,13 +291,16 @@ Access full conversation transcripts:
 
 ```swift
 // Continue conversations naturally
-try await agent.respond(to: "What was my first question?")
+try await agent.respond(
+  to: "What was my first question?",
+  options: .init(include: [.encryptedReasoning])
+)
 
 // Access conversation history
 for entry in agent.transcript {
   switch entry {
   case .prompt(let prompt):
-    print("User: \(prompt.content)")
+    print("User: \(prompt.input)")
   case .response(let response):
     print("Agent: \(response.content)")
   case .toolCalls(let calls):
@@ -407,4 +413,3 @@ SwiftAgent is available under the MIT license. See [LICENSE](LICENSE) for more i
 ---
 
 *Made with ❤️ for the Swift community*
-
