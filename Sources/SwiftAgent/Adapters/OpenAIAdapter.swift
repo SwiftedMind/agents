@@ -14,67 +14,9 @@ public final class OpenAIAdapter: AgentAdapter {
   private var instructions: String = ""
   private let httpClient: HTTPClient
   private let responsesPath: String
-
-  // MARK: - Configuration
-
-  public struct Configuration: AdapterConfiguration {
-    public var httpClient: HTTPClient
-    public var responsesPath: String
-
-    public init(httpClient: HTTPClient, responsesPath: String = "/v1/responses") {
-      self.httpClient = httpClient
-      self.responsesPath = responsesPath
-    }
-
-    /// Default configuration used by the protocol-mandated initializer.
-    /// To customize, use the initializer that accepts a `Configuration`, or `Configuration.direct(...)`.
-    public static var `default`: Configuration = {
-      let baseURL = URL(string: "https://api.openai.com")!
-      let config = HTTPClientConfiguration(
-        baseURL: baseURL,
-        defaultHeaders: [:],
-        timeout: 60,
-        jsonEncoder: JSONEncoder(),
-        jsonDecoder: JSONDecoder(),
-        interceptors: .init()
-      )
-      return Configuration(httpClient: URLSessionHTTPClient(configuration: config))
-    }()
-
-    /// Convenience builder for calling OpenAI directly with an API key.
-    /// Users can alternatively point `baseURL` to their own backend and omit the apiKey.
-    public static func direct(
-      apiKey: String,
-      baseURL: URL = URL(string: "https://api.openai.com")!,
-      responsesPath: String = "/v1/responses"
-    ) -> Configuration {
-      let encoder = JSONEncoder()
-      let decoder = JSONDecoder()
-      // Keep defaults; OpenAI models define their own coding keys
-
-      let interceptors = HTTPClientInterceptors(
-        prepareRequest: { request in
-          request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        },
-        onUnauthorized: { _, _, _ in
-          // Let the caller decide how to refresh; default is not to retry
-          false
-        }
-      )
-
-      let config = HTTPClientConfiguration(
-        baseURL: baseURL,
-        defaultHeaders: [:],
-        timeout: 60,
-        jsonEncoder: encoder,
-        jsonDecoder: decoder,
-        interceptors: interceptors
-      )
-
-      return Configuration(httpClient: URLSessionHTTPClient(configuration: config), responsesPath: responsesPath)
-    }
-  }
-
+  
+  public let simulation: SimulationAdapter<Metadata>
+  
   public init(
     tools: [any AgentTool],
     instructions: String,
@@ -82,6 +24,7 @@ public final class OpenAIAdapter: AgentAdapter {
   ) {
     self.tools = tools
     self.instructions = instructions
+    self.simulation = SimulationAdapter()
     httpClient = configuration.httpClient
     responsesPath = configuration.responsesPath
   }
@@ -607,6 +550,68 @@ extension OpenAI.Model: AdapterModel {
   }
 }
 
+// MARK: - Configuration
+
+public extension OpenAIAdapter {
+  struct Configuration: AdapterConfiguration {
+    public var httpClient: HTTPClient
+    public var responsesPath: String
+
+    public init(httpClient: HTTPClient, responsesPath: String = "/v1/responses") {
+      self.httpClient = httpClient
+      self.responsesPath = responsesPath
+    }
+
+    /// Default configuration used by the protocol-mandated initializer.
+    /// To customize, use the initializer that accepts a `Configuration`, or `Configuration.direct(...)`.
+    public static var `default`: Configuration = {
+      let baseURL = URL(string: "https://api.openai.com")!
+      let config = HTTPClientConfiguration(
+        baseURL: baseURL,
+        defaultHeaders: [:],
+        timeout: 60,
+        jsonEncoder: JSONEncoder(),
+        jsonDecoder: JSONDecoder(),
+        interceptors: .init()
+      )
+      return Configuration(httpClient: URLSessionHTTPClient(configuration: config))
+    }()
+
+    /// Convenience builder for calling OpenAI directly with an API key.
+    /// Users can alternatively point `baseURL` to their own backend and omit the apiKey.
+    public static func direct(
+      apiKey: String,
+      baseURL: URL = URL(string: "https://api.openai.com")!,
+      responsesPath: String = "/v1/responses"
+    ) -> Configuration {
+      let encoder = JSONEncoder()
+      let decoder = JSONDecoder()
+      // Keep defaults; OpenAI models define their own coding keys
+
+      let interceptors = HTTPClientInterceptors(
+        prepareRequest: { request in
+          request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        },
+        onUnauthorized: { _, _, _ in
+          // Let the caller decide how to refresh; default is not to retry
+          false
+        }
+      )
+
+      let config = HTTPClientConfiguration(
+        baseURL: baseURL,
+        defaultHeaders: [:],
+        timeout: 60,
+        jsonEncoder: encoder,
+        jsonDecoder: decoder,
+        interceptors: interceptors
+      )
+
+      return Configuration(httpClient: URLSessionHTTPClient(configuration: config), responsesPath: responsesPath)
+    }
+  }
+}
+
 // MARK: - Metadata
 
 public extension OpenAIAdapter {
@@ -617,6 +622,10 @@ public extension OpenAIAdapter {
       package init(reasoningId: String) {
         self.reasoningId = reasoningId
       }
+
+      public static var simulated: Self {
+        Self(reasoningId: UUID().uuidString)
+      }
     }
 
     public struct ToolCall: ToolCallAdapterMetadata {
@@ -624,6 +633,10 @@ public extension OpenAIAdapter {
 
       package init(callId: String) {
         toolCallId = callId
+      }
+
+      public static var simulated: Self {
+        Self(callId: UUID().uuidString)
       }
     }
 
@@ -633,6 +646,10 @@ public extension OpenAIAdapter {
       package init(callId: String) {
         toolCallId = callId
       }
+
+      public static var simulated: Self {
+        Self(callId: UUID().uuidString)
+      }
     }
 
     public struct Response: ResponseAdapterMetadata {
@@ -640,6 +657,10 @@ public extension OpenAIAdapter {
 
       package init(messageOutputId: String) {
         self.messageOutputId = messageOutputId
+      }
+
+      public static var simulated: Self {
+        Self(messageOutputId: UUID().uuidString)
       }
     }
   }
@@ -677,7 +698,7 @@ public extension OpenAIAdapter {
 
     /// Specifies how the model should choose which tools to call, if any. Options include automatic, none, required, or a specific tool.
     public var toolChoice: ToolChoice?
-      
+
     /// The number of most likely tokens to return at each token position, along with their log probabilities. Must be between 0 and 20.
     public var topLogProbs: UInt?
 

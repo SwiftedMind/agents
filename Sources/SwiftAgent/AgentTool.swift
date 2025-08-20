@@ -3,6 +3,38 @@
 import Foundation
 import FoundationModels
 
+public protocol MockableAgentTool where Self: AgentTool, Arguments: Encodable {
+  static func mockArguments() -> Arguments
+  static func mockOutput() async throws -> Output
+}
+
+public protocol MockableGenerable where Self: Generable {
+  static func mockContent() -> GeneratedContent
+}
+
+struct FindContacts: AgentTool, MockableAgentTool {
+  static func mockArguments() -> Arguments {
+    .init(count: 5)
+  }
+
+  static func mockOutput() async throws -> [String] {
+    []
+  }
+
+  let name = "findContacts"
+  let description = "Finds a specific number of contacts"
+
+  @Generable
+  struct Arguments: Encodable {
+    @Guide(description: "The number of contacts to get", .range(1...10))
+    let count: Int
+  }
+
+  func call(arguments: Arguments) async throws -> [String] {
+    []
+  }
+}
+
 // MARK: - AgentTool
 
 public protocol AgentTool<ResolvedToolRun>: FoundationModels.Tool, Encodable where Output: ConvertibleToGeneratedContent, Output: ConvertibleFromGeneratedContent {
@@ -12,7 +44,7 @@ public protocol AgentTool<ResolvedToolRun>: FoundationModels.Tool, Encodable whe
 }
 
 public extension AgentTool {
-  private var toolType: Self.Type { Self.self }
+  package var toolType: Self.Type { Self.self }
 
   func resolvedTool(arguments: GeneratedContent, output: GeneratedContent?) throws -> ResolvedToolRun {
     try resolve(run(for: arguments, output: output))
