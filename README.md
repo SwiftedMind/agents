@@ -90,8 +90,6 @@ print(response.content)
 Create tools using Apple's `@Generable` macro for type-safe, schema-free tool definitions:
 
 ```swift
-import FoundationModels
-
 struct WeatherTool: AgentTool {
   let name = "get_weather"
   let description = "Get current weather for a location"
@@ -132,8 +130,8 @@ struct WeatherTool: AgentTool {
 Separate user input from contextual information for cleaner prompt augmentation and better transcript organization:
 
 ```swift
-// Define your context reference types
-enum MyContextReference: PromptContextReference, PromptRepresentable {
+// Define your context types
+enum PromptContext: SwiftAgent.PromptContext, SwiftAgent.PromptRepresentable {
   case vectorEmbedding(String)
   case documentContext(String)
   case searchResults([String])
@@ -156,7 +154,7 @@ enum MyContextReference: PromptContextReference, PromptRepresentable {
 }
 
 // Create an agent that supports context
-let agent = OpenAIAgent(supplying: MyContextReference.self, tools: tools)
+let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
 
 // Respond with context - user input and context are separated in the transcript
 let response = try await agent.respond(
@@ -166,17 +164,15 @@ let response = try await agent.respond(
     .documentContext("Apple's official SwiftUI documentation...")
   ]
 ) { input, context in
-  // Build your prompt using context references (PromptRepresentable makes this cleaner)
-  PromptTag("context", items: context.references)
-  PromptTag("user-input") { input }
+  PromptTag("context", items: context)
+  input
 }
 
 // The transcript now clearly separates user input from augmented context
 for entry in agent.transcript {
   if case let .prompt(prompt) = entry {
     print("User input: \(prompt.content)")
-    print("Context references: \(prompt.context.references.count)")
-    print("Link previews: \(prompt.context.linkPreviews.count)")
+    print("Context items: \(prompt.context.count)")
   }
 }
 ```
@@ -201,7 +197,7 @@ extension WeatherTool {
 
 // Use the tool resolver to get compile-time safe tool access
 let tools: [any AgentTool<ResolvedToolRun>] = [WeatherTool(), CalculatorTool()]
-let agent = OpenAIAgent(supplying: MyContextReference.self, tools: tools)
+let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
 
 // After the agent runs, resolve tool calls for UI display
 let toolResolver = agent.transcript.toolResolver(for: tools)
@@ -234,7 +230,7 @@ SwiftAgent provides streamlined initializers that reduce generic complexity:
 
 ```swift
 // Using the OpenAIAgent typealias (recommended)
-let agent = OpenAIAgent(supplying: MyContextReference.self, tools: tools)
+let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
 
 // No context needed
 let agent = OpenAIAgent(tools: tools)
@@ -243,9 +239,9 @@ let agent = OpenAIAgent(tools: tools)
 let agent = OpenAIAgent()
 
 // Generic form still available for other adapters
-let agent = Agent<CustomAdapter, MyContextReference>(
+let agent = Agent<CustomAdapter, PromptContext>(
   using: CustomAdapter.self,
-  supplying: MyContextReference.self,
+  supplying: PromptContext.self,
   tools: tools
 )
 ```
@@ -282,10 +278,10 @@ for task in response.content.tasks {
 ### Custom Generation Options
 
 ```swift
-let options = OpenAIAdapter.GenerationOptions(
+let options = GenerationOptions(
+  maxTokens: 1000,
   temperature: 0.7,
-  maxOutputTokens: 1000,
-  reasoning: .init(effort: .medium)
+  allowedSteps: 10
 )
 
 let response = try await agent.respond(
