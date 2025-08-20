@@ -10,7 +10,7 @@ let package = Package(
   products: [
     .library(
       name: "SwiftAgent",
-      targets: ["OpenAISwiftAgent", "AgentSimulation"]
+      targets: ["SwiftAgent", "OpenAIAgent", "AgentSimulation"]
     ),
   ],
   dependencies: [
@@ -25,7 +25,7 @@ let package = Package(
       dependencies: ["Internal"]
     ),
     .target(
-      name: "OpenAISwiftAgent",
+      name: "OpenAIAgent",
       dependencies: [
         "SwiftAgent",
         .product(name: "OpenAI", package: "swift-openai-responses"),
@@ -33,7 +33,11 @@ let package = Package(
     ),
     .target(
       name: "AgentSimulation",
-      dependencies: ["SwiftAgent"]
+      dependencies: [
+        "SwiftAgent",
+        "Internal",
+        .product(name: "OpenAI", package: "swift-openai-responses"),
+      ]
     ),
     .testTarget(
       name: "SwiftAgentTests",

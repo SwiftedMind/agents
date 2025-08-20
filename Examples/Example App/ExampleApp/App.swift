@@ -1,7 +1,7 @@
 // By Dennis Müller
 
 import FoundationModels
-import OpenAISwiftAgent
+import OpenAIAgent
 import SwiftUI
 
 @main
@@ -21,6 +21,12 @@ struct ExampleApp: App {
       RootView()
     }
   }
+}
+
+// MARK: - Prompt Context
+
+enum ContextSource: PromptContextSource {
+  case currentDate(Date)
 }
 
 // MARK: - Tools
@@ -124,66 +130,9 @@ struct WeatherTool: AgentTool {
   }
 }
 
-struct CurrentTimeTool: AgentTool {
-  let name = "get_current_time"
-  let description = "Gets the current date and time"
-
-  @Generable
-  struct Arguments {
-    @Guide(description: "Optional timezone (e.g., 'UTC', 'PST', 'EST'). Defaults to local time.")
-    let timezone: String?
-  }
-
-  @Generable
-  struct Output {
-    let currentTime: String
-    let timezone: String
-    let timestamp: Double
-  }
-
-  func call(arguments: Arguments) async throws -> Output {
-    let now = Date()
-    let formatter = DateFormatter()
-    formatter.dateStyle = .full
-    formatter.timeStyle = .long
-
-    let timezoneString: String
-    if let requestedTimezone = arguments.timezone {
-      switch requestedTimezone.uppercased() {
-      case "UTC":
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        timezoneString = "UTC"
-      case "PST":
-        formatter.timeZone = TimeZone(identifier: "America/Los_Angeles")
-        timezoneString = "PST"
-      case "EST":
-        formatter.timeZone = TimeZone(identifier: "America/New_York")
-        timezoneString = "EST"
-      default:
-        formatter.timeZone = TimeZone.current
-        timezoneString = TimeZone.current.identifier
-      }
-    } else {
-      formatter.timeZone = TimeZone.current
-      timezoneString = TimeZone.current.identifier
-    }
-
-    return Output(
-      currentTime: formatter.string(from: now),
-      timezone: timezoneString,
-      timestamp: now.timeIntervalSince1970
-    )
-  }
-
-  func resolve(_ run: AgentToolRun<CurrentTimeTool>) -> ResolvedToolRun {
-    .currentTime(run)
-  }
-}
-
 enum ResolvedToolRun {
   case calculator(AgentToolRun<CalculatorTool>)
   case weather(AgentToolRun<WeatherTool>)
-  case currentTime(AgentToolRun<CurrentTimeTool>)
 }
 
 enum ToolError: Error, LocalizedError {

@@ -2,29 +2,31 @@
 
 import Foundation
 
-public struct PromptContext<Reference>: Sendable, Equatable where Reference: PromptContextReference {
-  public init(references: [Reference], linkPreviews: [PromptContextLinkPreview]) {
-    self.references = references
+public struct PromptContext<Source>: Sendable, Equatable where Source: PromptContextSource {
+  public init(sources: [Source], linkPreviews: [PromptContextLinkPreview]) {
+    self.sources = sources
     self.linkPreviews = linkPreviews
   }
-  
+
   public static var empty: Self {
-    Self(references: [], linkPreviews: [])
+    Self(sources: [], linkPreviews: [])
   }
-  
-  public var references: [Reference] = []
+
+  public var sources: [Source] = []
   public var linkPreviews: [PromptContextLinkPreview] = []
 }
 
-public protocol PromptContextReference: Sendable, Equatable {}
-public struct EmptyPromptContextReference: PromptContextReference {}
+public protocol PromptContextSource: Sendable, Equatable {}
+public struct NoContext: PromptContextSource {}
 
+// TODO: Implement properly
+// TODO: Implement PromptRepresentable conformance for this type and an array of this type
 public struct PromptContextLinkPreview: Sendable, Equatable {
   public var title: String
   public var description: String
-  
+
   public init(url: URL) async throws {
-    self.title = ""
-    self.description = ""
+    title = ""
+    description = ""
   }
 }

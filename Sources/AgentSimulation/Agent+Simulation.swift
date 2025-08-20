@@ -48,7 +48,7 @@ public extension Agent {
       }
     }
 
-    return AgentResponse<Adapter, ContextReference, String>(
+    return AgentResponse<Adapter, Context, String>(
       content: responseContent.joined(separator: "\n"),
       addedEntries: addedEntities
     )
@@ -81,7 +81,7 @@ public extension Agent {
           case .text:
             break
           case let .structure(structuredSegment):
-            return try AgentResponse<Adapter, ContextReference, Content>(
+            return try AgentResponse<Adapter, Context, Content>(
               content: Content(structuredSegment.content),
               addedEntries: addedEntities
             )

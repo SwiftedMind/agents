@@ -8,18 +8,18 @@ import OSLog
 // MARK: - Tool Resolver
 
 public extension AgentTranscript {
-  func toolResolver<ResolvedToolRun>(for tools: [any AgentTool<ResolvedToolRun>]) -> AgentToolResolver<ContextReference, ResolvedToolRun> {
+  func toolResolver<ResolvedToolRun>(for tools: [any AgentTool<ResolvedToolRun>]) -> AgentToolResolver<Context, ResolvedToolRun> {
     AgentToolResolver(tools: tools, in: self)
   }
 }
 
-public struct AgentToolResolver<ContextReference: PromptContextReference, ResolvedToolRun> {
-  public typealias ToolCall = AgentTranscript<ContextReference>.ToolCall
+public struct AgentToolResolver<Context: PromptContextSource, ResolvedToolRun> {
+  public typealias ToolCall = AgentTranscript<Context>.ToolCall
 
   private let toolsByName: [String: any AgentTool<ResolvedToolRun>]
-  private let transcriptToolOutputs: [AgentTranscript<ContextReference>.ToolOutput]
+  private let transcriptToolOutputs: [AgentTranscript<Context>.ToolOutput]
 
-  init(tools: [any AgentTool<ResolvedToolRun>], in transcript: AgentTranscript<ContextReference>) {
+  init(tools: [any AgentTool<ResolvedToolRun>], in transcript: AgentTranscript<Context>) {
     toolsByName = Dictionary(uniqueKeysWithValues: tools.map { ($0.name, $0) })
     transcriptToolOutputs = transcript.compactMap { entry in
       switch entry {

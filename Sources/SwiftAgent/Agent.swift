@@ -4,17 +4,15 @@ import Foundation
 import FoundationModels
 
 @Observable @MainActor
-public final class Agent<Adapter: AgentAdapter, ContextReference: PromptContextReference> {
-  public typealias Transcript = AgentTranscript<ContextReference>
-  public typealias Context = PromptContext<ContextReference>
-  public typealias Response<Content: Generable> = AgentResponse<Adapter, ContextReference, Content>
+public final class Agent<Adapter: AgentAdapter, Context: PromptContextSource> {
+  public typealias Transcript = AgentTranscript<Context>
+  public typealias Context = PromptContext<Context>
+  public typealias Response<Content: Generable> = AgentResponse<Adapter, Context, Content>
 
-  private let adapter: Adapter
-
+  package let adapter: Adapter
   public var transcript: Transcript
 
-  /// Shared initialization logic used by all public initializers
-  public init(adapter: Adapter) {
+  package init(adapter: Adapter) {
     transcript = Transcript()
     self.adapter = adapter
   }
@@ -57,7 +55,7 @@ public final class Agent<Adapter: AgentAdapter, ContextReference: PromptContextR
       }
     }
 
-    return AgentResponse<Adapter, ContextReference, String>(
+    return AgentResponse<Adapter, Context, String>(
       content: responseContent.joined(separator: "\n"),
       addedEntries: addedEntities
     )
@@ -95,7 +93,7 @@ public final class Agent<Adapter: AgentAdapter, ContextReference: PromptContextR
           case let .structure(structuredSegment):
             // We can return here since a structured response can only happen once
             // TODO: Handle errors here in some way
-            return try AgentResponse<Adapter, ContextReference, Content>(
+            return try AgentResponse<Adapter, Context, Content>(
               content: Content(structuredSegment.content),
               addedEntries: addedEntities
             )
@@ -106,31 +104,6 @@ public final class Agent<Adapter: AgentAdapter, ContextReference: PromptContextR
 
     let errorContext = GenerationError.UnexpectedStructuredResponseContext()
     throw GenerationError.unexpectedStructuredResponse(errorContext)
-  }
-}
-
-// MARK: - Agent + Initializers
-
-public extension Agent {
-  // MARK: Generic Initializers
-
-  convenience init(
-    using adapter: Adapter.Type,
-    supplying context: ContextReference.Type,
-    tools: [any AgentTool] = [],
-    instructions: String = "",
-    configuration: Adapter.Configuration = .default
-  ) {
-    self.init(adapter: Adapter(tools: tools, instructions: instructions, configuration: configuration))
-  }
-
-  convenience init(
-    using adapter: Adapter.Type,
-    tools: [any AgentTool] = [],
-    instructions: String = "",
-    configuration: Adapter.Configuration = .default
-  ) where ContextReference == EmptyPromptContextReference {
-    self.init(adapter: Adapter(tools: tools, instructions: instructions, configuration: configuration))
   }
 }
 
@@ -217,12 +190,12 @@ public extension Agent {
   @discardableResult
   func respond(
     to input: String,
-    supplying contextItems: [ContextReference],
+    supplying contextItems: [Context],
     using model: Adapter.Model = .default,
     options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
-    @PromptBuilder embeddingInto prompt: @Sendable (_ input: String, _ context: Context) -> Prompt
+    @PromptBuilder embeddingInto prompt: @Sendable (_ input: String, _ context: PromptContext<Context>) -> Prompt
   ) async throws -> Response<String> {
-    let context = Context(references: contextItems, linkPreviews: [])
+    let context = PromptContext(sources: contextItems, linkPreviews: [])
 
     let prompt = Transcript.Prompt(
       input: input,
@@ -235,13 +208,13 @@ public extension Agent {
   @discardableResult
   func respond<Content>(
     to input: String,
-    supplying contextItems: [ContextReference],
+    supplying contextItems: [Context],
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
     options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
-    @PromptBuilder embeddingInto prompt: @Sendable (_ prompt: String, _ context: Context) -> Prompt
+    @PromptBuilder embeddingInto prompt: @Sendable (_ prompt: String, _ context: PromptContext<Context>) -> Prompt
   ) async throws -> Response<Content> where Content: Generable {
-    let context = Context(references: contextItems, linkPreviews: [])
+    let context = PromptContext(sources: contextItems, linkPreviews: [])
 
     let prompt = Transcript.Prompt(
       input: input,
@@ -254,14 +227,14 @@ public extension Agent {
 
 // MARK: - AgentResponse
 
-public struct AgentResponse<Adapter: AgentAdapter, ContextReference: PromptContextReference, Content> where Content: Generable {
+public struct AgentResponse<Adapter: AgentAdapter, Context: PromptContextSource, Content> where Content: Generable {
   /// The response content.
   public var content: Content
 
   /// The transcript entries that the prompt produced.
-  public var addedEntries: [Agent<Adapter, ContextReference>.Transcript.Entry]
+  public var addedEntries: [Agent<Adapter, Context>.Transcript.Entry]
 
-  package init(content: Content, addedEntries: [Agent<Adapter, ContextReference>.Transcript.Entry]) {
+  package init(content: Content, addedEntries: [Agent<Adapter, Context>.Transcript.Entry]) {
     self.content = content
     self.addedEntries = addedEntries
   }

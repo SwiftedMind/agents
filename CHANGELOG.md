@@ -1,5 +1,111 @@
 # Changelog
 
+## [0.6.0]
+
+### Breaking Changes
+
+- **Modular Architecture**: SwiftAgent has been restructured into separate provider-specific modules. The core `SwiftAgent` framework is now provider-agnostic, with OpenAI functionality moved to the dedicated `OpenAIAgent` module:
+  ```swift
+  // Before
+  import SwiftAgent
+  let agent = OpenAIAgent(tools: tools, instructions: "...")
+  
+  // Now  
+  import OpenAIAgent
+  let agent = OpenAIAgent(tools: tools, instructions: "...")
+  ```
+
+- **Import Changes**: Users must now import the appropriate provider module instead of the core framework:
+  - For OpenAI: `import OpenAIAgent` 
+  - For custom adapters: `import SwiftAgent`
+
+- **Agent Initializer**: The core `Agent.init(adapter:)` initializer is now public to support external adapter implementations
+
+### Added
+
+- **OpenAIAgent Module**: New dedicated module containing:
+  - `OpenAIAdapter` with full OpenAI API integration
+  - `OpenAIAgent` typealias for convenient agent creation
+  - Convenient initializers with direct API key support:
+    ```swift
+    // Direct API key configuration
+    let agent = OpenAIAgent(
+      tools: tools,
+      instructions: "...",
+      apiKey: "your-api-key"
+    )
+    
+    // Configuration object
+    let agent = OpenAIAgent(
+      tools: tools, 
+      instructions: "...",
+      configuration: config
+    )
+    
+    // Default configuration
+    let agent = OpenAIAgent(tools: tools, instructions: "...")
+    ```
+
+- **Future Provider Support**: The new architecture enables easy addition of other AI providers:
+  - `GeminiSwiftAgent` (future)
+  - `AnthropicSwiftAgent` (future)
+  - Custom provider implementations
+
+- **Enhanced Package Structure**: 
+  - Core `SwiftAgent` - Provider-agnostic framework
+  - `OpenAIAgent` - OpenAI-specific implementation
+  - `AgentSimulation` - Testing and simulation utilities
+
+### Enhanced
+
+- **Provider Agnostic Core**: The core SwiftAgent framework is now completely independent of any AI provider, making it easier to add new providers
+- **Cleaner Dependencies**: OpenAI dependencies are isolated to the OpenAIAgent module
+- **Better Modularity**: Each provider can have its own specific features and configuration options
+
+### Migration Guide
+
+1. **Update Imports**: Change your import statements to use the appropriate provider module:
+   ```swift
+   // Replace this
+   import SwiftAgent
+   
+   // With this for OpenAI
+   import OpenAIAgent
+   
+   // Or this for custom adapters
+   import SwiftAgent
+   ```
+
+2. **Agent Creation**: Agent creation syntax remains the same, but now uses the provider-specific module:
+   ```swift
+   // This still works the same way
+   let agent = OpenAIAgent(tools: tools, instructions: "...")
+   
+   // But now benefits from new convenience initializers
+   let agent = OpenAIAgent(
+     tools: tools,
+     instructions: "...", 
+     apiKey: "your-api-key"
+   )
+   ```
+
+3. **Configuration**: Configuration methods are now provider-specific and more convenient:
+   ```swift
+   // Before - global configuration
+   let config = OpenAIAdapter.Configuration.direct(apiKey: "...")
+   OpenAIAdapter.Configuration.setDefaultConfiguration(config)
+   let agent = OpenAIAgent(tools: tools, instructions: "...")
+   
+   // Now - can configure directly in initializer (recommended)
+   let agent = OpenAIAgent(
+     tools: tools,
+     instructions: "...",
+     apiKey: "your-api-key"
+   )
+   ```
+
+4. **Package Dependencies**: Your Package.swift remains the same - the SwiftAgent package now includes both core and OpenAI modules
+
 ## [0.5.0]
 
 ### Breaking Changes

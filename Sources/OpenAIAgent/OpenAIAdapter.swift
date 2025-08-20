@@ -9,8 +9,8 @@ import SwiftAgent
 
 public final class OpenAIAdapter: AgentAdapter {
   public typealias Model = OpenAI.Model
-  public typealias Transcript<ContextReference: PromptContextReference> = AgentTranscript<ContextReference>
-  public typealias ConfigurationError = OpenAIConfigurationError
+  public typealias Transcript<Context: PromptContextSource> = AgentTranscript<Context>
+  public typealias ConfigurationError = OpenAIGenerationOptionsError
 
   private var tools: [any AgentTool]
   private var instructions: String = ""
@@ -34,7 +34,7 @@ public final class OpenAIAdapter: AgentAdapter {
     using model: Model = .default,
     including transcript: Transcript<Context>,
     options: GenerationOptions
-  ) -> AsyncThrowingStream<Transcript<Context>.Entry, any Error> where Content: Generable, Context: PromptContextReference {
+  ) -> AsyncThrowingStream<Transcript<Context>.Entry, any Error> where Content: Generable, Context: PromptContextSource {
     let setup = AsyncThrowingStream<Transcript<Context>.Entry, any Error>.makeStream()
 
     // Log start of an agent run
@@ -45,19 +45,20 @@ public final class OpenAIAdapter: AgentAdapter {
     )
 
     let task = Task<Void, Never> {
+      // Validate configuration before creating request
       do {
-        // Validate configuration before creating request
         try options.validate(for: model)
       } catch {
-        Logger.main.error("Invalid configuration: \(error.localizedDescription)")
+        AgentLog.error(error, context: "Invalid generation options")
         setup.continuation.finish(throwing: error)
       }
 
+      // Run the agent
       do {
         try await run(transcript: transcript, generating: type, using: model, options: options, continuation: setup.continuation)
       } catch {
         // Surface a clear, user-friendly message
-        AgentLog.error(error, context: "respond")
+        AgentLog.error(error, context: "agent response")
         setup.continuation.finish(throwing: error)
       }
 
@@ -77,14 +78,13 @@ public final class OpenAIAdapter: AgentAdapter {
     using model: Model = .default,
     options: GenerationOptions,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Content: Generable, Context: PromptContextReference {
+  ) async throws where Content: Generable, Context: PromptContextSource {
     var generatedTranscript = Transcript<Context>()
     let allowedSteps = 20
     var currentStep = 0
 
     for _ in 0..<allowedSteps {
       currentStep += 1
-
       AgentLog.stepRequest(step: currentStep)
 
       let request = request(
@@ -134,7 +134,7 @@ public final class OpenAIAdapter: AgentAdapter {
     type: Content.Type,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Content: Generable, Context: PromptContextReference {
+  ) async throws where Content: Generable, Context: PromptContextSource {
     switch output {
     case let .message(message):
       try await handleMessage(
@@ -165,7 +165,7 @@ public final class OpenAIAdapter: AgentAdapter {
     type: Content.Type,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Content: Generable, Context: PromptContextReference {
+  ) async throws where Content: Generable, Context: PromptContextSource {
     if type == String.self {
       try await processStringResponse(
         message,
@@ -186,7 +186,7 @@ public final class OpenAIAdapter: AgentAdapter {
     _ message: Message.Output,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Context: PromptContextReference {
+  ) async throws where Context: PromptContextSource {
     let response = Transcript<Context>.Response(
       id: message.id,
       segments: message.content.compactMap(\.asText).map { .text(Transcript.TextSegment(content: $0)) },
@@ -205,7 +205,7 @@ public final class OpenAIAdapter: AgentAdapter {
     type: Content.Type,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Content: Generable, Context: PromptContextReference {
+  ) async throws where Content: Generable, Context: PromptContextSource {
     guard let content = message.content.first else {
       let errorContext = GenerationError.EmptyMessageContentContext(expectedType: String(describing: type))
       throw GenerationError.emptyMessageContent(errorContext)
@@ -243,7 +243,7 @@ public final class OpenAIAdapter: AgentAdapter {
     _ functionCall: Item.FunctionCall,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Context: PromptContextReference {
+  ) async throws where Context: PromptContextSource {
     let generatedContent = try GeneratedContent(json: functionCall.arguments)
 
     let toolCall = Transcript<Context>.ToolCall(
@@ -300,7 +300,7 @@ public final class OpenAIAdapter: AgentAdapter {
     _ reasoning: Item.Reasoning,
     generatedTranscript: inout Transcript<Context>,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Context: PromptContextReference {
+  ) async throws where Context: PromptContextSource {
     let summary = reasoning.summary.map { summary in
       switch summary {
       case let .text(text):
@@ -335,7 +335,7 @@ public final class OpenAIAdapter: AgentAdapter {
     generating type: Content.Type,
     using model: Model,
     options: GenerationOptions
-  ) -> OpenAI.Request where Content: Generable, Context: PromptContextReference {
+  ) -> OpenAI.Request where Content: Generable, Context: PromptContextSource {
     let textConfig: TextConfig? = {
       if type == String.self {
         return nil
@@ -388,7 +388,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusFromOpenAIStatus<Context>(
     _ status: Message.Status
-  ) -> Transcript<Context>.Status where Context: PromptContextReference {
+  ) -> Transcript<Context>.Status where Context: PromptContextSource {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -398,7 +398,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusFromOpenAIStatus<Context>(
     _ status: Item.FunctionCall.Status
-  ) -> Transcript<Context>.Status where Context: PromptContextReference {
+  ) -> Transcript<Context>.Status where Context: PromptContextSource {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -408,7 +408,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusFromOpenAIStatus<Context>(
     _ status: Item.Reasoning.Status?
-  ) -> Transcript<Context>.Status? where Context: PromptContextReference {
+  ) -> Transcript<Context>.Status? where Context: PromptContextSource {
     guard let status else { return nil }
 
     switch status {
@@ -420,7 +420,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusToMessageStatus<Context>(
     _ status: Transcript<Context>.Status
-  ) -> Message.Status where Context: PromptContextReference {
+  ) -> Message.Status where Context: PromptContextSource {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -430,7 +430,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusToFunctionCallStatus<Context>(
     _ status: Transcript<Context>.Status
-  ) -> Item.FunctionCall.Status where Context: PromptContextReference {
+  ) -> Item.FunctionCall.Status where Context: PromptContextSource {
     switch status {
     case .completed: return .completed
     case .incomplete: return .incomplete
@@ -440,7 +440,7 @@ public final class OpenAIAdapter: AgentAdapter {
 
   private func transcriptStatusToReasoningStatus<Context>(
     _ status: Transcript<Context>.Status?
-  ) -> Item.Reasoning.Status? where Context: PromptContextReference {
+  ) -> Item.Reasoning.Status? where Context: PromptContextSource {
     guard let status else { return nil }
 
     switch status {
@@ -450,7 +450,7 @@ public final class OpenAIAdapter: AgentAdapter {
     }
   }
 
-  func transcriptToListItems<Context>(_ transcript: Transcript<Context>) -> [Input.ListItem] where Context: PromptContextReference {
+  func transcriptToListItems<Context>(_ transcript: Transcript<Context>) -> [Input.ListItem] where Context: PromptContextSource {
     var listItems: [Input.ListItem] = []
 
     for entry in transcript {
@@ -520,20 +520,6 @@ public final class OpenAIAdapter: AgentAdapter {
   }
 }
 
-// MARK: - Helpers
-
-func snakeCaseName<T>(for type: T.Type) -> String {
-  let name = String(describing: type)
-    .replacingOccurrences(of: ".Type", with: "")
-
-  return name.reduce(into: "") { result, char in
-    if char.isUppercase, !result.isEmpty {
-      result.append("_")
-    }
-    result.append(char.lowercased())
-  }
-}
-
 extension OpenAI.Model: AdapterModel {
   public static var `default`: Self {
     .gpt5
@@ -554,167 +540,6 @@ extension OpenAI.Model: AdapterModel {
          .o4MiniDeepResearch:
       return true
     default: return false
-    }
-  }
-}
-
-// MARK: - Configuration Error
-
-public enum OpenAIConfigurationError: Error, LocalizedError {
-  // TODO: Add specific configuration validation errors here
-  case abc
-
-  public var errorDescription: String? {
-    switch self {
-    case .abc:
-      return ""
-    }
-  }
-}
-
-// MARK: - Configuration
-
-public extension OpenAIAdapter {
-  struct Configuration: AdapterConfiguration {
-    public var httpClient: HTTPClient
-    public var responsesPath: String
-
-    public init(httpClient: HTTPClient, responsesPath: String = "/v1/responses") {
-      self.httpClient = httpClient
-      self.responsesPath = responsesPath
-    }
-
-    /// Default configuration used by the protocol-mandated initializer.
-    /// To customize, use the initializer that accepts a `Configuration`, or `Configuration.direct(...)`.
-    public static var `default`: Configuration = {
-      let baseURL = URL(string: "https://api.openai.com")!
-      let config = HTTPClientConfiguration(
-        baseURL: baseURL,
-        defaultHeaders: [:],
-        timeout: 60,
-        jsonEncoder: JSONEncoder(),
-        jsonDecoder: JSONDecoder(),
-        interceptors: .init()
-      )
-      return Configuration(httpClient: URLSessionHTTPClient(configuration: config))
-    }()
-
-    /// Convenience builder for calling OpenAI directly with an API key.
-    /// Users can alternatively point `baseURL` to their own backend and omit the apiKey.
-    public static func direct(
-      apiKey: String,
-      baseURL: URL = URL(string: "https://api.openai.com")!,
-      responsesPath: String = "/v1/responses"
-    ) -> Configuration {
-      let encoder = JSONEncoder()
-      let decoder = JSONDecoder()
-      // Keep defaults; OpenAI models define their own coding keys
-
-      let interceptors = HTTPClientInterceptors(
-        prepareRequest: { request in
-          request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        },
-        onUnauthorized: { _, _, _ in
-          // Let the caller decide how to refresh; default is not to retry
-          false
-        }
-      )
-
-      let config = HTTPClientConfiguration(
-        baseURL: baseURL,
-        defaultHeaders: [:],
-        timeout: 60,
-        jsonEncoder: encoder,
-        jsonDecoder: decoder,
-        interceptors: interceptors
-      )
-
-      return Configuration(httpClient: URLSessionHTTPClient(configuration: config), responsesPath: responsesPath)
-    }
-  }
-}
-
-// MARK: - Generation Options
-
-public extension OpenAIAdapter {
-  struct GenerationOptions: AdapterGenerationOptions {
-    public typealias Model = OpenAI.Model
-    public typealias ConfigurationError = OpenAIConfigurationError
-    public typealias Include = OpenAI.Request.Include
-    public typealias ReasoningConfig = OpenAI.ReasoningConfig
-    public typealias ToolChoice = OpenAI.Tool.Choice
-    public typealias Truncation = OpenAI.Truncation
-
-    /// Specifies additional outputs to include with the response, such as code interpreter results, search outputs, or logprobs.
-    public var include: [Include]?
-
-    /// The maximum number of tokens that the model can generate in its response.
-    public var maxOutputTokens: UInt?
-
-    /// Controls whether multiple tool calls can be executed in parallel during generation.
-    public var allowParallelToolCalls: Bool?
-
-    /// Configuration for reasoning-capable models, including effort level and summary formatting options.
-    public var reasoning: ReasoningConfig?
-
-    /// A stable identifier used by OpenAI to help detect potential misuse patterns across requests.
-    public var safetyIdentifier: String?
-
-    /// The service tier to use, which affects request priority, throughput limits, and cost.
-    public var serviceTier: ServiceTier?
-
-    /// Controls the randomness of the output. Values range from 0 to 2, where higher values produce more random results.
-    public var temperature: Double?
-
-    /// Specifies how the model should choose which tools to call, if any. Options include automatic, none, required, or a specific tool.
-    public var toolChoice: ToolChoice?
-
-    /// The number of most likely tokens to return at each token position, along with their log probabilities. Must be between 0 and 20.
-    public var topLogProbs: UInt?
-
-    /// An alternative to temperature sampling. Only tokens with cumulative probability up to this threshold are considered.
-    public var topP: Double?
-
-    /// Defines how the model should handle inputs that exceed the context window limits.
-    public var truncation: Truncation?
-
-    public init() {}
-
-    public init(
-      include: [Include]? = nil,
-      maxOutputTokens: UInt? = nil,
-      allowParallelToolCalls: Bool? = nil,
-      reasoning: ReasoningConfig? = nil,
-      safetyIdentifier: String? = nil,
-      serviceTier: ServiceTier? = nil,
-      temperature: Double? = nil,
-      toolChoice: ToolChoice? = nil,
-      topLogProbs: UInt? = nil,
-      topP: Double? = nil,
-      truncation: Truncation? = nil
-    ) {
-      self.include = include
-      self.maxOutputTokens = maxOutputTokens
-      self.allowParallelToolCalls = allowParallelToolCalls
-      self.reasoning = reasoning
-      self.safetyIdentifier = safetyIdentifier
-      self.serviceTier = serviceTier
-      self.temperature = temperature
-      self.toolChoice = toolChoice
-      self.topLogProbs = topLogProbs
-      self.topP = topP
-      self.truncation = truncation
-    }
-
-    /// Validates the generation options for the given model.
-    /// - Parameter model: The model to validate options against
-    /// - Throws: OpenAIConfigurationError if the options are invalid for the model
-    public func validate(for model: Model) throws(ConfigurationError) {
-      // TODO: Add validation logic here
-      // Example: Check if reasoning model is used without encrypted reasoning
-      // if model.isReasoning && reasoning?.includeEncryptedContent != true {
-      //   throw ConfigurationError.missingEncryptedReasoningForReasoningModel
-      // }
     }
   }
 }

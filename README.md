@@ -11,26 +11,7 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
 
 ## Table of Contents
 
-- [Features](#-features)
-- [Quick Start](#-quick-start)
-  - [Installation](#installation)
-  - [Basic Usage](#basic-usage)
-- [Building Tools](#️-building-tools)
-- [Advanced Usage](#-advanced-usage)
-  - [Prompt Context](#prompt-context)
-  - [Tool Resolver](#tool-resolver)
-  - [Convenience Initializers](#convenience-initializers)
-  - [Structured Output Generation](#structured-output-generation)
-  - [Custom Generation Options](#custom-generation-options)
-  - [Conversation History](#conversation-history)
-  - [Agent Simulation](#agent-simulation)
-- [Configuration](#-configuration)
-  - [Adapter Setup](#adapter-setup)
-  - [Logging](#logging)
-- [Development Status](#-development-status)
-- [License](#-license)
-- [Acknowledgments](#-acknowledgments)
-
+TODO: Fix
 
 ---
 
@@ -59,17 +40,23 @@ dependencies: [
 ]
 ```
 
+Then import the provider module you need:
+
+```swift
+// For OpenAI
+import OpenAIAgent
+
+// Core framework (for custom adapters)
+import SwiftAgent
+```
+
 ### Basic Usage
 
 ```swift
-import SwiftAgent
+import OpenAIAgent
 import FoundationModels
 
-// Configure your adapter
-let config = OpenAIAdapter.Configuration.direct(apiKey: "your-api-key")
-OpenAIAdapter.Configuration.setDefaultConfiguration(config)
-
-// Create an agent with tools (using the convenient OpenAIAgent typealias)
+// Create an agent with OpenAI - multiple configuration options available
 let agent = OpenAIAgent(
   tools: [WeatherTool(), CalculatorTool()],
   instructions: "You are a helpful assistant."
@@ -82,6 +69,17 @@ let response = try await agent.respond(
 )
 
 print(response.content)
+```
+
+#### Alternative Configuration Methods
+
+```swift
+// Using default configuration (requires environment setup)
+let agent = OpenAIAgent(tools: tools, instructions: "...")
+
+// Using custom configuration
+let config = OpenAIAdapter.Configuration.direct(apiKey: "your-api-key")
+let agent = OpenAIAgent(tools: tools, instructions: "...", configuration: config)
 ```
 
 ---
@@ -131,6 +129,8 @@ struct WeatherTool: AgentTool {
 Separate user input from contextual information for cleaner prompt augmentation and better transcript organization:
 
 ```swift
+import OpenAIAgent
+
 // Define your context types
 enum PromptContext: SwiftAgent.PromptContext, SwiftAgent.PromptRepresentable {
   case vectorEmbedding(String)
@@ -155,7 +155,9 @@ enum PromptContext: SwiftAgent.PromptContext, SwiftAgent.PromptRepresentable {
 }
 
 // Create an agent that supports context
-let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
+let agent: Agent<OpenAIAdapter, PromptContext> = Agent(
+  adapter: OpenAIAdapter(tools: tools, instructions: "...", configuration: config)
+)
 
 // Respond with context - user input and context are separated in the transcript
 let response = try await agent.respond(
@@ -198,7 +200,7 @@ extension WeatherTool {
 
 // Use the tool resolver to get compile-time safe tool access
 let tools: [any AgentTool<ResolvedToolRun>] = [WeatherTool(), CalculatorTool()]
-let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
+let agent = OpenAIAgent(tools: tools, instructions: "...")
 
 // After the agent runs, resolve tool calls for UI display
 let toolResolver = agent.transcript.toolResolver(for: tools)
@@ -227,24 +229,29 @@ for entry in agent.transcript {
 
 ### Convenience Initializers
 
-SwiftAgent provides streamlined initializers that reduce generic complexity:
+OpenAIAgent provides streamlined initializers:
 
 ```swift
-// Using the OpenAIAgent typealias (recommended)
-let agent = OpenAIAgent(supplying: PromptContext.self, tools: tools)
-
-// No context needed
-let agent = OpenAIAgent(tools: tools)
-
-// Even simpler for basic usage
-let agent = OpenAIAgent()
-
-// Generic form still available for other adapters
-let agent = Agent<CustomAdapter, PromptContext>(
-  using: CustomAdapter.self,
-  supplying: PromptContext.self,
-  tools: tools
+// Most convenient - direct API key
+let agent = OpenAIAgent(
+  tools: tools, 
+  instructions: "...",
+  apiKey: "your-api-key"
 )
+
+// Using configuration object  
+let agent = OpenAIAgent(
+  tools: tools,
+  instructions: "...",
+  configuration: config
+)
+
+// Basic usage with default configuration
+let agent = OpenAIAgent(tools: tools, instructions: "...")
+
+// Generic form for custom adapters (requires SwiftAgent import)
+import SwiftAgent
+let agent = Agent(adapter: CustomAdapter(...))
 ```
 
 ### Structured Output Generation
@@ -319,7 +326,7 @@ for entry in agent.transcript {
 Test and develop your agents without making API calls using the built-in simulation system. Perfect for prototyping, testing, and developing UIs before integrating with live APIs.
 
 ```swift
-import SwiftAgent
+import OpenAIAgent
 import AgentSimulation
 
 // Create mockable tool wrappers
@@ -362,19 +369,44 @@ The simulation system provides:
 
 ## 🔧 Configuration
 
-### Adapter Setup
+### OpenAI Configuration
 
 ```swift
-// Direct API key
-let config = OpenAIAdapter.Configuration.direct(apiKey: "sk-...")
+import OpenAIAgent
 
-// Custom endpoint
-let config = OpenAIAdapter.Configuration.custom(
-  apiKey: "sk-...",
-  baseURL: URL(string: "https://api.custom-openai.com")!
+// Method 1: Direct API key in initializer (recommended)
+let agent = OpenAIAgent(
+  tools: tools,
+  instructions: "...",
+  apiKey: "sk-..."
 )
 
+// Method 2: Configuration object
+let config = OpenAIAdapter.Configuration.direct(
+  apiKey: "sk-...",
+  baseURL: URL(string: "https://api.openai.com")!
+)
+let agent = OpenAIAgent(tools: tools, instructions: "...", configuration: config)
+
+// Method 3: Global default configuration
 OpenAIAdapter.Configuration.setDefaultConfiguration(config)
+let agent = OpenAIAgent(tools: tools, instructions: "...")
+```
+
+### Custom Adapters
+
+Create your own AI provider adapters:
+
+```swift
+import SwiftAgent
+
+// Implement the AgentAdapter protocol
+struct GeminiAdapter: AgentAdapter {
+  // Implementation details...
+}
+
+// Use with the core Agent class
+let agent = Agent(adapter: GeminiAdapter(...))
 ```
 
 ### Logging

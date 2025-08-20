@@ -1,7 +1,7 @@
 // By Dennis Müller
 
 import FoundationModels
-import OpenAISwiftAgent
+import OpenAIAgent
 import SwiftUI
 
 struct RootView: View {
@@ -10,14 +10,13 @@ struct RootView: View {
   @State private var toolCallsUsed: [String] = []
   @State private var isLoading = false
   @State private var errorMessage: String?
-  @State private var agent: OpenAIAgent<EmptyPromptContextReference>?
+  @State private var agent: OpenAIAgentWith<ContextSource>?
 
   // MARK: - Tools
 
   private var tools: [any AgentTool<ResolvedToolRun>] = [
     CalculatorTool(),
     WeatherTool(),
-    CurrentTimeTool(),
   ]
 
   // MARK: - Body
@@ -92,7 +91,8 @@ struct RootView: View {
   // MARK: - Setup
 
   private func setupAgent() {
-    agent = OpenAIAgent(
+    agent = OpenAIAgent.withContext(
+      ContextSource.self,
       tools: tools,
       instructions: """
       You are a helpful assistant with access to several tools.
@@ -108,13 +108,32 @@ struct RootView: View {
   private func askAgent() async {
     guard let agent, !userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
+    userInput = ""
     isLoading = true
     errorMessage = nil
     agentResponse = ""
     toolCallsUsed = []
 
     do {
-      let response = try await agent.respond(to: userInput, options: .init(include: [.encryptedReasoning]))
+      
+      let response = try await agent.respond(
+        to: userInput,
+        supplying: [.currentDate(Date())],
+        options: .init(include: [.encryptedReasoning])
+      ) { input, context in
+        PromptTag("context") {
+          for source in context.sources {
+            switch source {
+            case .currentDate(let date):
+              PromptTag("current-date") { date }
+            }
+          }
+        }
+        
+        PromptTag("input") {
+          input
+        }
+      }
       agentResponse = response.content
 
       let toolResolver = agent.transcript.toolResolver(for: tools)
@@ -133,10 +152,6 @@ struct RootView: View {
                   toolCallsUsed.append(
                     "Weather: \(output.location) - \(output.temperature)°C, \(output.condition)"
                   )
-                }
-              case let .currentTime(run):
-                if let output = run.output {
-                  toolCallsUsed.append("Time: \(output.currentTime) (\(output.timezone))")
                 }
               }
             } catch {

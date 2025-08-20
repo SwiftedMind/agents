@@ -10,7 +10,7 @@ import SwiftAgent
 @MainActor
 public struct SimulationAdapter {
   public typealias Model = OpenAI.Model
-  public typealias Transcript<ContextReference: PromptContextReference> = AgentTranscript<ContextReference>
+  public typealias Transcript<Context: PromptContextSource> = AgentTranscript<Context>
 
   public struct Configuration: Sendable {
     /// The delay between simulated model generations.
@@ -32,7 +32,7 @@ public struct SimulationAdapter {
     generating type: Content.Type,
     generations: [SimulatedGeneration<Content>]
   ) -> AsyncThrowingStream<Transcript<Context>.Entry, any Error>
-    where Content: MockableGenerable, Context: PromptContextReference {
+  where Content: MockableGenerable, Context: PromptContextSource {
     let setup = AsyncThrowingStream<Transcript<Context>.Entry, any Error>.makeStream()
 
     // Log the start of a simulated run for visibility
@@ -87,7 +87,7 @@ public struct SimulationAdapter {
   private func handleReasoning<Context>(
     summary: String,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Context: PromptContextReference {
+  ) async throws where Context: PromptContextSource {
     let entryData = Transcript<Context>.Reasoning(
       id: UUID().uuidString,
       summary: [summary],
@@ -104,7 +104,7 @@ public struct SimulationAdapter {
   private func handleToolRun<Context, MockedTool>(
     _ toolMock: MockedTool,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Context: PromptContextReference, MockedTool: MockableAgentTool {
+  ) async throws where Context: PromptContextSource, MockedTool: MockableAgentTool {
     let callId = UUID().uuidString
     let argumentsJSON = try toolMock.mockArguments().jsonString()
     let arguments = try GeneratedContent(json: argumentsJSON)
@@ -154,7 +154,7 @@ public struct SimulationAdapter {
   private func handleStringResponse<Context>(
     _ content: String,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Context: PromptContextReference {
+  ) async throws where Context: PromptContextSource {
     let response = Transcript<Context>.Response(
       id: UUID().uuidString,
       segments: [.text(Transcript.TextSegment(content: content))],
@@ -168,7 +168,7 @@ public struct SimulationAdapter {
   private func handleStructuredResponse<Content, Context>(
     _ content: Content,
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
-  ) async throws where Content: MockableGenerable, Context: PromptContextReference {
+  ) async throws where Content: MockableGenerable, Context: PromptContextSource {
     let generatedContent = GeneratedContent(content)
 
     let response = Transcript<Context>.Response(

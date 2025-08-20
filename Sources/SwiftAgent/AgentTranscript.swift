@@ -3,7 +3,7 @@
 import Foundation
 import FoundationModels
 
-public struct AgentTranscript<ContextReference: PromptContextReference>: Sendable, Equatable {
+public struct AgentTranscript<Context: PromptContextSource>: Sendable, Equatable {
   public var entries: [Entry]
 
   public init(entries: [Entry] = []) {
@@ -65,13 +65,13 @@ public extension AgentTranscript {
   struct Prompt: Sendable, Identifiable, Equatable {
     public var id: String
     public var input: String
-    public var context: PromptContext<ContextReference>
+    public var context: PromptContext<Context>
     package var embeddedPrompt: String
 
     package init(
       id: String = UUID().uuidString,
       input: String,
-      context: PromptContext<ContextReference> = .empty,
+      context: PromptContext<Context> = .empty,
       embeddedPrompt: String
     ) {
       self.id = id
@@ -125,7 +125,7 @@ extension AgentTranscript.ToolCalls: RandomAccessCollection, RangeReplaceableCol
   public var startIndex: Int { calls.startIndex }
   public var endIndex: Int { calls.endIndex }
 
-  public subscript(position: Int) -> AgentTranscript<ContextReference>.ToolCall {
+  public subscript(position: Int) -> AgentTranscript<Context>.ToolCall {
     calls[position]
   }
 
@@ -142,7 +142,7 @@ extension AgentTranscript.ToolCalls: RandomAccessCollection, RangeReplaceableCol
     calls = []
   }
 
-  public mutating func replaceSubrange<C>(_ subrange: Range<Int>, with newElements: C) where C: Collection, C.Element == AgentTranscript<ContextReference>.ToolCall {
+  public mutating func replaceSubrange<C>(_ subrange: Range<Int>, with newElements: C) where C: Collection, C.Element == AgentTranscript<Context>.ToolCall {
     calls.replaceSubrange(subrange, with: newElements)
   }
 }

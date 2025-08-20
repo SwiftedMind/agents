@@ -13,27 +13,27 @@ public protocol AgentAdapter {
 
   init(tools: [any AgentTool], instructions: String, configuration: Configuration)
 
-  func respond<Content, ContextReference>(
-    to prompt: AgentTranscript<ContextReference>.Prompt,
+  func respond<Content, Context>(
+    to prompt: AgentTranscript<Context>.Prompt,
     generating type: Content.Type,
     using model: Model,
-    including transcript: AgentTranscript<ContextReference>,
+    including transcript: AgentTranscript<Context>,
     options: GenerationOptions
-  ) -> AsyncThrowingStream<AgentTranscript<ContextReference>.Entry, any Error> where Content: Generable, ContextReference: PromptContextReference
+  ) -> AsyncThrowingStream<AgentTranscript<Context>.Entry, any Error> where Content: Generable, Context: PromptContextSource
 }
 
 // MARK: - GenerationOptions
 
 public protocol AdapterGenerationOptions {
   associatedtype Model: AdapterModel
-  associatedtype ConfigurationError: Error & LocalizedError
+  associatedtype GenerationOptionsError: Error & LocalizedError
 
   init()
 
   /// Validates the generation options for the given model.
   /// - Parameter model: The model to validate options against
   /// - Throws: ConfigurationError if the options are invalid for the model
-  func validate(for model: Model) throws(ConfigurationError)
+  func validate(for model: Model) throws(GenerationOptionsError)
 }
 
 // MARK: - Model
