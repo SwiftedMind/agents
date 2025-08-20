@@ -3,15 +3,6 @@
 import Foundation
 import FoundationModels
 
-public protocol MockableAgentTool where Self: AgentTool, Arguments: Encodable {
-  static func mockArguments() -> Arguments
-  static func mockOutput() async throws -> Output
-}
-
-public protocol MockableGenerable where Self: Generable {
-  static func mockContent() -> GeneratedContent
-}
-
 // MARK: - AgentTool
 
 public protocol AgentTool<ResolvedToolRun>: FoundationModels.Tool, Encodable where Output: ConvertibleToGeneratedContent, Output: ConvertibleFromGeneratedContent {

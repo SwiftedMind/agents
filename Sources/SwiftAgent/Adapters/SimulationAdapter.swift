@@ -6,40 +6,6 @@ import Internal
 import OpenAI
 import OSLog
 
-private func jsonString<T: Encodable>(
-  from value: T,
-  pretty: Bool = false
-) throws -> String {
-  let encoder = JSONEncoder()
-  encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-  if pretty { encoder.outputFormatting.insert(.prettyPrinted) }
-  encoder.dateEncodingStrategy = .iso8601
-
-  let data = try encoder.encode(value)
-  return String(decoding: data, as: UTF8.self)
-}
-
-public extension Encodable {
-  func jsonString(pretty: Bool = false) throws -> String {
-    try SwiftAgent.jsonString(from: self, pretty: pretty)
-  }
-}
-
-public enum SimulationStep<Content>: Sendable where Content: Generable, Content: Sendable {
-  case reasoning(summary: String)
-  case toolRun(tool: any MockableAgentTool)
-  case response(content: Content)
-
-  package var toolName: String? {
-    switch self {
-    case let .toolRun(tool):
-      return tool.name
-    default:
-      return nil
-    }
-  }
-}
-
 @MainActor
 public final class SimulationAdapter<Metadata> where Metadata: AdapterMetadata {
   public typealias Model = OpenAI.Model
