@@ -69,6 +69,34 @@
 
 - **Enhanced AgentAdapter Protocol**: Added `GenerationOptions` as an associated type to the `AgentAdapter` protocol, enabling type-safe, adapter-specific configuration
 
+- **Agent Simulation System**: Introduced the `AgentSimulation` target for testing and development without API calls. The simulation system includes:
+  - `simulateResponse` methods that mirror the standard `respond` API
+  - `MockableAgentTool` protocol for creating mock tool calls and outputs
+  - `SimulatedGeneration` enum supporting tool runs, reasoning, and text or structured responses, simulating model generations
+  - Complete transcript compatibility - simulated responses work on the real transcript object, guaranteeing full compatibility with the actual agent
+  - Zero API costs during development and testing
+  
+  ```swift
+  import SwiftAgent
+  import AgentSimulation
+  
+  // Create mockable tool wrappers
+  struct WeatherToolMock: MockableAgentTool {
+    var tool: WeatherTool
+    func mockArguments() -> WeatherTool.Arguments { /* mock data */ }
+    func mockOutput() async throws -> WeatherTool.Output { /* mock results */ }
+  }
+  
+  // Use simulateResponse instead of respond
+  let response = try await agent.simulateResponse(
+    to: "What's the weather?",
+    generations: [
+      .toolRun(tool: WeatherToolMock(tool: WeatherTool())),
+      .response(content: "It's sunny!")
+    ]
+  )
+  ```
+
 ### Enhanced
 
 - **Type Safety**: Generation options are now compile-time validated and specific to each adapter implementation

@@ -23,6 +23,7 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
   - [Structured Output Generation](#structured-output-generation)
   - [Custom Generation Options](#custom-generation-options)
   - [Conversation History](#conversation-history)
+  - [Agent Simulation](#agent-simulation)
 - [Configuration](#-configuration)
   - [Adapter Setup](#adapter-setup)
   - [Logging](#logging)
@@ -312,6 +313,50 @@ for entry in agent.transcript {
   }
 }
 ```
+
+### Agent Simulation
+
+Test and develop your agents without making API calls using the built-in simulation system. Perfect for prototyping, testing, and developing UIs before integrating with live APIs.
+
+```swift
+import SwiftAgent
+import AgentSimulation
+
+// Create mockable tool wrappers
+struct WeatherToolMock: MockableAgentTool {
+  var tool: WeatherTool
+  
+  func mockArguments() -> WeatherTool.Arguments {
+    .init(location: "San Francisco")
+  }
+  
+  func mockOutput() async throws -> WeatherTool.Output {
+    .init(
+      location: "San Francisco", 
+      temperature: 22.5, 
+      condition: "sunny", 
+      humidity: 65
+    )
+  }
+}
+
+// Use simulateResponse instead of respond
+let response = try await agent.simulateResponse(
+  to: "What's the weather like in San Francisco?",
+  generations: [
+    .toolRun(tool: WeatherToolMock(tool: WeatherTool())),
+    .response(content: "It's a beautiful sunny day in San Francisco with 22.5°C!")
+  ]
+)
+
+print(response.content) // "It's a beautiful sunny day in San Francisco with 22.5°C!"
+```
+
+The simulation system provides:
+- **Zero API costs** during development and testing
+- **Predictable responses** for consistent UI testing  
+- **Tool execution simulation** with mock data
+- **Complete transcript compatibility** - simulated responses work exactly like real ones
 
 ---
 
