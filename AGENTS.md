@@ -11,14 +11,6 @@ SwiftAgent is a Swift Package that provides:
 - **Example App** (`Examples/Example App/`): A working iOS app demonstrating SDK usage
 - **Documentation** (`docs/`): Technical guidelines and Apple platform insights
 
-### Key Features
-- 🎯 Zero-Setup Agent Loops with autonomous execution
-- 🔧 Native Tool Integration using `@Generable` structs from FoundationModels
-- 🌐 Adapter Agnostic design (OpenAI included, extensible to other providers)
-- 📱 Apple-Native API inspired by FoundationModels
-- 🚀 Modern Swift 6 with async/await and concurrency
-- 📊 Rich Logging for debugging and monitoring
-
 ## Project Structure
 
 ### Core SDK (`Sources/SwiftAgent/`)
@@ -31,11 +23,6 @@ SwiftAgent is a Swift Package that provides:
 - **`Adapters/`** - AI provider adapters (OpenAI, extensible)
 - **`Networking/`** - HTTP client and error handling
 - **`PromptBuilder/`** - DSL for building structured prompts
-
-### Example Application (`Examples/Example App/`)
-- **`App.swift`** - Main app entry point
-- **`RootView.swift`** - Primary UI demonstrating agent usage
-- **`Config/`** - App configuration and secrets management
 
 ### Testing (`Tests/`)
 - **`SwiftAgentTests/`** - Core SDK unit tests using Swift Testing
