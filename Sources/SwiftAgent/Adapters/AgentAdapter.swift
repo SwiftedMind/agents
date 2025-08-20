@@ -9,6 +9,7 @@ public protocol AgentAdapter {
   associatedtype GenerationOptions: AdapterGenerationOptions
   associatedtype Model: AdapterModel
   associatedtype Configuration: AdapterConfiguration
+  associatedtype ConfigurationError: Error & LocalizedError
 
   init(tools: [any AgentTool], instructions: String, configuration: Configuration)
 
@@ -24,7 +25,15 @@ public protocol AgentAdapter {
 // MARK: - GenerationOptions
 
 public protocol AdapterGenerationOptions {
+  associatedtype Model: AdapterModel
+  associatedtype ConfigurationError: Error & LocalizedError
+
   init()
+
+  /// Validates the generation options for the given model.
+  /// - Parameter model: The model to validate options against
+  /// - Throws: ConfigurationError if the options are invalid for the model
+  func validate(for model: Model) throws(ConfigurationError)
 }
 
 // MARK: - Model

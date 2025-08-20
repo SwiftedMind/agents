@@ -5,16 +5,16 @@ import PackageDescription
 let package = Package(
   name: "SwiftAgent",
   platforms: [
-    .iOS(.v26)
+    .iOS(.v26),
   ],
   products: [
     .library(
       name: "SwiftAgent",
-      targets: ["SwiftAgent", "AgentSimulation"]
+      targets: ["OpenAISwiftAgent", "AgentSimulation"]
     ),
   ],
   dependencies: [
-    .package(url: "https://github.com/SwiftedMind/swift-openai-responses", branch: "main")
+    .package(url: "https://github.com/SwiftedMind/swift-openai-responses", branch: "main"),
   ],
   targets: [
     .target(
@@ -22,8 +22,12 @@ let package = Package(
     ),
     .target(
       name: "SwiftAgent",
+      dependencies: ["Internal"]
+    ),
+    .target(
+      name: "OpenAISwiftAgent",
       dependencies: [
-        "Internal",
+        "SwiftAgent",
         .product(name: "OpenAI", package: "swift-openai-responses"),
       ]
     ),

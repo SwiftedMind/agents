@@ -1,7 +1,7 @@
 // By Dennis Müller
 
 import FoundationModels
-import SwiftAgent
+import OpenAISwiftAgent
 import SwiftUI
 
 @main
@@ -13,7 +13,7 @@ struct ExampleApp: App {
 
     // Enable logging for development
     AgentConfiguration.setLoggingEnabled(true)
-    AgentConfiguration.setNetworkLoggingEnabled(false)
+    AgentConfiguration.setNetworkLoggingEnabled(true)
   }
 
   var body: some Scene {

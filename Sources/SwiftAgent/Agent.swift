@@ -3,8 +3,6 @@
 import Foundation
 import FoundationModels
 
-public typealias OpenAIAgent<ContextReference: PromptContextReference> = Agent<OpenAIAdapter, ContextReference>
-
 @Observable @MainActor
 public final class Agent<Adapter: AgentAdapter, ContextReference: PromptContextReference> {
   public typealias Transcript = AgentTranscript<ContextReference>
@@ -16,7 +14,7 @@ public final class Agent<Adapter: AgentAdapter, ContextReference: PromptContextR
   public var transcript: Transcript
 
   /// Shared initialization logic used by all public initializers
-  init(adapter: Adapter) {
+  public init(adapter: Adapter) {
     transcript = Transcript()
     self.adapter = adapter
   }
@@ -132,25 +130,6 @@ public extension Agent {
     instructions: String = "",
     configuration: Adapter.Configuration = .default
   ) where ContextReference == EmptyPromptContextReference {
-    self.init(adapter: Adapter(tools: tools, instructions: instructions, configuration: configuration))
-  }
-
-  // MARK: OpenAI Initializers
-
-  convenience init(
-    supplying context: ContextReference.Type,
-    tools: [any AgentTool] = [],
-    instructions: String = "",
-    configuration: Adapter.Configuration = .default
-  ) where Adapter == OpenAIAdapter {
-    self.init(adapter: Adapter(tools: tools, instructions: instructions, configuration: configuration))
-  }
-
-  convenience init(
-    tools: [any AgentTool] = [],
-    instructions: String = "",
-    configuration: Adapter.Configuration = .default
-  ) where Adapter == OpenAIAdapter, ContextReference == EmptyPromptContextReference {
     self.init(adapter: Adapter(tools: tools, instructions: instructions, configuration: configuration))
   }
 }

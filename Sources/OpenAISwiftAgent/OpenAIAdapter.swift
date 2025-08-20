@@ -5,16 +5,18 @@ import FoundationModels
 import Internal
 import OpenAI
 import OSLog
+import SwiftAgent
 
 public final class OpenAIAdapter: AgentAdapter {
   public typealias Model = OpenAI.Model
   public typealias Transcript<ContextReference: PromptContextReference> = AgentTranscript<ContextReference>
+  public typealias ConfigurationError = OpenAIConfigurationError
 
   private var tools: [any AgentTool]
   private var instructions: String = ""
   private let httpClient: HTTPClient
   private let responsesPath: String
-  
+
   public init(
     tools: [any AgentTool],
     instructions: String,
@@ -43,6 +45,14 @@ public final class OpenAIAdapter: AgentAdapter {
     )
 
     let task = Task<Void, Never> {
+      do {
+        // Validate configuration before creating request
+        try options.validate(for: model)
+      } catch {
+        Logger.main.error("Invalid configuration: \(error.localizedDescription)")
+        setup.continuation.finish(throwing: error)
+      }
+
       do {
         try await run(transcript: transcript, generating: type, using: model, options: options, continuation: setup.continuation)
       } catch {
@@ -548,6 +558,20 @@ extension OpenAI.Model: AdapterModel {
   }
 }
 
+// MARK: - Configuration Error
+
+public enum OpenAIConfigurationError: Error, LocalizedError {
+  // TODO: Add specific configuration validation errors here
+  case abc
+
+  public var errorDescription: String? {
+    switch self {
+    case .abc:
+      return ""
+    }
+  }
+}
+
 // MARK: - Configuration
 
 public extension OpenAIAdapter {
@@ -614,6 +638,8 @@ public extension OpenAIAdapter {
 
 public extension OpenAIAdapter {
   struct GenerationOptions: AdapterGenerationOptions {
+    public typealias Model = OpenAI.Model
+    public typealias ConfigurationError = OpenAIConfigurationError
     public typealias Include = OpenAI.Request.Include
     public typealias ReasoningConfig = OpenAI.ReasoningConfig
     public typealias ToolChoice = OpenAI.Tool.Choice
@@ -678,6 +704,17 @@ public extension OpenAIAdapter {
       self.topLogProbs = topLogProbs
       self.topP = topP
       self.truncation = truncation
+    }
+
+    /// Validates the generation options for the given model.
+    /// - Parameter model: The model to validate options against
+    /// - Throws: OpenAIConfigurationError if the options are invalid for the model
+    public func validate(for model: Model) throws(ConfigurationError) {
+      // TODO: Add validation logic here
+      // Example: Check if reasoning model is used without encrypted reasoning
+      // if model.isReasoning && reasoning?.includeEncryptedContent != true {
+      //   throw ConfigurationError.missingEncryptedReasoningForReasoningModel
+      // }
     }
   }
 }

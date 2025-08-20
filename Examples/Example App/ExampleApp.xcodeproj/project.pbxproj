@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4E247B022E4744B700F87AE5 /* SwiftAgent in Frameworks */ = {isa = PBXBuildFile; productRef = 4E247B012E4744B700F87AE5 /* SwiftAgent */; };
+		4E933BCC2E5626C300741337 /* SwiftAgent in Frameworks */ = {isa = PBXBuildFile; productRef = 4E933BCB2E5626C300741337 /* SwiftAgent */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,7 +33,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4E247B022E4744B700F87AE5 /* SwiftAgent in Frameworks */,
+				4E933BCC2E5626C300741337 /* SwiftAgent in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -365,7 +365,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		4E247B012E4744B700F87AE5 /* SwiftAgent */ = {
+		4E933BCB2E5626C300741337 /* SwiftAgent */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SwiftAgent;
 		};
