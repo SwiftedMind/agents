@@ -15,8 +15,6 @@ public final class OpenAIAdapter: AgentAdapter {
   private let httpClient: HTTPClient
   private let responsesPath: String
   
-  public let simulation: SimulationAdapter<Metadata>
-  
   public init(
     tools: [any AgentTool],
     instructions: String,
@@ -24,7 +22,6 @@ public final class OpenAIAdapter: AgentAdapter {
   ) {
     self.tools = tools
     self.instructions = instructions
-    self.simulation = SimulationAdapter()
     httpClient = configuration.httpClient
     responsesPath = configuration.responsesPath
   }
@@ -622,10 +619,6 @@ public extension OpenAIAdapter {
       package init(reasoningId: String) {
         self.reasoningId = reasoningId
       }
-
-      public static var simulated: Self {
-        Self(reasoningId: UUID().uuidString)
-      }
     }
 
     public struct ToolCall: ToolCallAdapterMetadata {
@@ -633,10 +626,6 @@ public extension OpenAIAdapter {
 
       package init(callId: String) {
         toolCallId = callId
-      }
-
-      public static var simulated: Self {
-        Self(callId: UUID().uuidString)
       }
     }
 
@@ -646,10 +635,6 @@ public extension OpenAIAdapter {
       package init(callId: String) {
         toolCallId = callId
       }
-
-      public static var simulated: Self {
-        Self(callId: UUID().uuidString)
-      }
     }
 
     public struct Response: ResponseAdapterMetadata {
@@ -657,10 +642,6 @@ public extension OpenAIAdapter {
 
       package init(messageOutputId: String) {
         self.messageOutputId = messageOutputId
-      }
-
-      public static var simulated: Self {
-        Self(messageOutputId: UUID().uuidString)
       }
     }
   }

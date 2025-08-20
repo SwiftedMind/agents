@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
   name: "SwiftAgent",
   platforms: [
-    .iOS(.v26)
+    .iOS(.v26),
   ],
   products: [
     .library(
@@ -14,7 +14,7 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(url: "https://github.com/SwiftedMind/swift-openai-responses", branch: "main")
+    .package(url: "https://github.com/SwiftedMind/swift-openai-responses", branch: "main"),
   ],
   targets: [
     .target(

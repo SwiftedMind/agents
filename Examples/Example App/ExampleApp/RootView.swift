@@ -117,8 +117,6 @@ struct RootView: View {
       let response = try await agent.respond(to: userInput)
       agentResponse = response.content
       
-      try await agent.simulateResponse(to: "", steps: [])
-      
       let toolResolver = agent.transcript.toolResolver(for: tools)
       for entry in response.addedEntries {
         if case let .toolCalls(toolCalls) = entry {

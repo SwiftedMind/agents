@@ -20,8 +20,6 @@ public protocol AgentAdapter {
     including transcript: AgentTranscript<Metadata, ContextReference>,
     options: GenerationOptions
   ) -> AsyncThrowingStream<AgentTranscript<Metadata, ContextReference>.Entry, any Error> where Content: Generable, ContextReference: PromptContextReference
-  
-  var simulation: SimulationAdapter<Metadata> { get }
 }
 
 // MARK: - GenerationOptions
@@ -46,13 +44,10 @@ public protocol AdapterMetadata: Sendable {
 }
 
 public protocol ReasoningAdapterMetadata: Codable, Sendable, Equatable {
-  static var simulated: Self { get }
   var reasoningId: String { get }
 }
 
 public protocol ToolCallAdapterMetadata: Codable, Sendable, Equatable {
-  static var simulated: Self { get }
-  
   /// The provider specific identifier for the tool call.
   ///
   /// For example, OpenAI uses a "call_" prefixed id, while Anthropic uses a "toolu_" prefixed id.
@@ -60,17 +55,13 @@ public protocol ToolCallAdapterMetadata: Codable, Sendable, Equatable {
 }
 
 public protocol ToolOutputAdapterMetadata: Codable, Sendable, Equatable {
-  static var simulated: Self { get }
-  
   /// The provider specific identifier for the tool call.
   ///
   /// For example, OpenAI uses a "call_" prefixed id, while Anthropic uses a "toolu_" prefixed id.
   var toolCallId: String { get }
 }
 
-public protocol ResponseAdapterMetadata: Codable, Sendable, Equatable {
-  static var simulated: Self { get }
-}
+public protocol ResponseAdapterMetadata: Codable, Sendable, Equatable {}
 
 // MARK: Configuration
 

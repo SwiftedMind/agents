@@ -11,7 +11,7 @@ public final class Agent<Adapter: AgentAdapter, ContextReference: PromptContextR
   public typealias Context = PromptContext<ContextReference>
   public typealias Response<Content: Generable> = AgentResponse<Adapter, ContextReference, Content>
 
-  private let adapter: Adapter
+  package let adapter: Adapter
 
   public var transcript: Transcript
 
@@ -232,121 +232,6 @@ public extension Agent {
   }
 }
 
-// MARK: - Agent + Simulation Responses
-
-public extension Agent {
-  @discardableResult
-  func simulateResponse(
-    to prompt: String,
-    steps: [SimulationStep<String>]
-  ) async throws -> Response<String> {
-    let transcriptPrompt = Transcript.Prompt(input: prompt, embeddedPrompt: prompt)
-    let promptEntry = Transcript.Entry.prompt(transcriptPrompt)
-    transcript.append(promptEntry)
-
-    let stream = adapter.simulation.respond(
-      to: transcriptPrompt,
-      generating: String.self,
-      including: transcript,
-      steps: steps
-    )
-    var responseContent: [String] = []
-    var addedEntities: [Transcript.Entry] = []
-
-    for try await entry in stream {
-      transcript.append(entry)
-      addedEntities.append(entry)
-
-      if case let .response(response) = entry {
-        for segment in response.segments {
-          switch segment {
-          case let .text(textSegment):
-            responseContent.append(textSegment.content)
-          case .structure:
-            break
-          }
-        }
-      }
-    }
-
-    return AgentResponse<Adapter, ContextReference, String>(
-      content: responseContent.joined(separator: "\n"),
-      addedEntries: addedEntities
-    )
-  }
-
-  @discardableResult
-  func simulateResponse<Content>(
-    to prompt: String,
-    steps: [SimulationStep<Content>]
-  ) async throws -> Response<Content> where Content: MockableGenerable {
-    let transcriptPrompt = Transcript.Prompt(input: prompt, embeddedPrompt: prompt)
-    let promptEntry = Transcript.Entry.prompt(transcriptPrompt)
-    transcript.append(promptEntry)
-
-    let stream = adapter.simulation.respond(
-      to: transcriptPrompt,
-      generating: Content.self,
-      including: transcript,
-      steps: steps
-    )
-    var addedEntities: [Transcript.Entry] = []
-
-    for try await entry in stream {
-      transcript.append(entry)
-      addedEntities.append(entry)
-
-      if case let .response(response) = entry {
-        for segment in response.segments {
-          switch segment {
-          case .text:
-            break
-          case let .structure(structuredSegment):
-            return try AgentResponse<Adapter, ContextReference, Content>(
-              content: Content(structuredSegment.content),
-              addedEntries: addedEntities
-            )
-          }
-        }
-      }
-    }
-
-    let errorContext = GenerationError.UnexpectedStructuredResponseContext()
-    throw GenerationError.unexpectedStructuredResponse(errorContext)
-  }
-
-  @discardableResult
-  func simulateResponse(
-    to prompt: Prompt,
-    steps: [SimulationStep<String>]
-  ) async throws -> Response<String> {
-    try await simulateResponse(to: prompt.formatted(), steps: steps)
-  }
-
-  @discardableResult
-  func simulateResponse<Content>(
-    to prompt: Prompt,
-    steps: [SimulationStep<Content>]
-  ) async throws -> Response<Content> where Content: MockableGenerable {
-    try await simulateResponse(to: prompt.formatted(), steps: steps)
-  }
-
-  @discardableResult
-  func simulateResponse(
-    steps: [SimulationStep<String>],
-    @PromptBuilder prompt: () throws -> Prompt
-  ) async throws -> Response<String> {
-    try await simulateResponse(to: prompt().formatted(), steps: steps)
-  }
-
-  @discardableResult
-  func simulateResponse<Content>(
-    steps: [SimulationStep<Content>],
-    @PromptBuilder prompt: () throws -> Prompt
-  ) async throws -> Response<Content> where Content: MockableGenerable {
-    try await simulateResponse(to: prompt().formatted(), steps: steps)
-  }
-}
 
 // MARK: - Agent + Context Responses
 
@@ -399,4 +284,12 @@ public struct AgentResponse<Adapter: AgentAdapter, ContextReference: PromptConte
 
   /// The transcript entries that the prompt produced.
   public var addedEntries: [Agent<Adapter, ContextReference>.Transcript.Entry]
+  
+  package init(
+    content: Content,
+    addedEntries: [Agent<Adapter, ContextReference>.Transcript.Entry]
+  ) {
+    self.content = content
+    self.addedEntries = addedEntries
+  }
 }
