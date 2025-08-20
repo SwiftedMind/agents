@@ -347,7 +347,6 @@ public final class OpenAIAdapter: AgentAdapter {
       include: options.include,
       instructions: instructions,
       maxOutputTokens: options.maxOutputTokens,
-      maxToolCalls: options.maxOutputTokens,
       metadata: nil,
       parallelToolCalls: options.allowParallelToolCalls,
       previousResponseId: nil,
