@@ -47,7 +47,7 @@ public final class SimulationAdapter<Metadata> where Metadata: AdapterMetadata {
   
   public init() {}
   
-  func simulatedResponse<Content, Context>(
+  func respond<Content, Context>(
     to prompt: Transcript<Context>.Prompt,
     generating type: Content.Type,
     including transcript: Transcript<Context>,

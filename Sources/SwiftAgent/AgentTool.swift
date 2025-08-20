@@ -12,29 +12,6 @@ public protocol MockableGenerable where Self: Generable {
   static func mockContent() -> GeneratedContent
 }
 
-struct FindContacts: AgentTool, MockableAgentTool {
-  static func mockArguments() -> Arguments {
-    .init(count: 5)
-  }
-
-  static func mockOutput() async throws -> [String] {
-    []
-  }
-
-  let name = "findContacts"
-  let description = "Finds a specific number of contacts"
-
-  @Generable
-  struct Arguments: Encodable {
-    @Guide(description: "The number of contacts to get", .range(1...10))
-    let count: Int
-  }
-
-  func call(arguments: Arguments) async throws -> [String] {
-    []
-  }
-}
-
 // MARK: - AgentTool
 
 public protocol AgentTool<ResolvedToolRun>: FoundationModels.Tool, Encodable where Output: ConvertibleToGeneratedContent, Output: ConvertibleFromGeneratedContent {
