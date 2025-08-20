@@ -11,7 +11,27 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
 
 ## Table of Contents
 
-TODO: Fix
+- [✨ Features](#-features)
+- [🚀 Quick Start](#-quick-start)
+  - [Installation](#installation)
+  - [Basic Usage](#basic-usage)
+  - [Alternative Configuration Methods](#alternative-configuration-methods)
+- [🛠️ Building Tools](#️-building-tools)
+- [📖 Advanced Usage](#-advanced-usage)
+  - [Prompt Context](#prompt-context)
+  - [Tool Resolver](#tool-resolver)
+  - [Convenience Initializers](#convenience-initializers)
+  - [Structured Output Generation](#structured-output-generation)
+  - [Custom Generation Options](#custom-generation-options)
+  - [Conversation History](#conversation-history)
+  - [Agent Simulation](#agent-simulation)
+- [🔧 Configuration](#-configuration)
+  - [OpenAI Configuration](#openai-configuration)
+  - [Custom Adapters](#custom-adapters)
+  - [Logging](#logging)
+- [🧪 Development Status](#-development-status)
+- [📄 License](#-license)
+- [🙏 Acknowledgments](#-acknowledgments)
 
 ---
 
