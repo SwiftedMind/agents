@@ -19,8 +19,6 @@ public struct PromptContext<Source>: Sendable, Equatable where Source: PromptCon
 public protocol PromptContextSource: Sendable, Equatable {}
 public struct NoContext: PromptContextSource {}
 
-// TODO: Implement properly
-// TODO: Implement PromptRepresentable conformance for this type and an array of this type
 public struct PromptContextLinkPreview: Sendable, Equatable {
   public var title: String
   public var description: String

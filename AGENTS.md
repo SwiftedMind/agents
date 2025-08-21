@@ -9,7 +9,7 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
 SwiftAgent is a Swift Package that provides:
 - **Core SDK** (`Sources/SwiftAgent/`): The main agent framework with adapter support for OpenAI and extensible to other providers
 - **Example App** (`Examples/Example App/`): A working iOS app demonstrating SDK usage
-- **Documentation** (`docs/`): Technical guidelines and Apple platform insights
+- **Guidelines** (`guidelines/`): General rules and guidelines for working on this project as well as technical documentation
 
 ## Project Structure
 
@@ -50,15 +50,20 @@ SwiftAgent is a Swift Package that provides:
 - Use clean formatting
 - Always make use of todo lists to keep track of your plan and work, unless the task is trivial or very quick
 - When making changes to the code, ALWAYS build the SDK to check for compilation errors
-- When making changes to code used in the app, always consider if any of the @docs/ files have to be updated
+- When making changes to code used in the app, always consider if any of the @guidelines/ files have to be updated
 - Use 2 spaces for indentation and tabs
 - In SwiftUI views, always place private properties on top of the non-private ones, and the non-private ones directly above the initializer
 
+### Todos
+
+- Always place todos in the @guidelines/todos directory
+- Each todo is placed in its own file where it can be specified and thought about until it is completed
+
 ## Resources
 
-- @docs/modern-swift.md - Guidelines on modern SwiftUI and how to build things with it
-- @docs/swift-testing.md - An overview of the Swift Testing framework
-- @docs/tests.md - Guidelines on writing unit tests for the SDK
+- @guidelines/modern-swift.md - Guidelines on modern SwiftUI and how to build things with it
+- @guidelines/swift-testing.md - An overview of the Swift Testing framework
+- @guidelines/tests.md - Guidelines on writing unit tests for the SDK
 
 ## Development Commands
 
