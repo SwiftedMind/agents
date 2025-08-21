@@ -7,10 +7,6 @@ import SwiftUI
 @main
 struct ExampleApp: App {
   init() {
-    // Configure OpenAI adapter with API key
-    let configuration = OpenAIAdapter.Configuration.direct(apiKey: Secret.OpenAI.apiKey)
-    OpenAIAdapter.Configuration.setDefaultConfiguration(configuration)
-
     // Enable logging for development
     SwiftAgentConfiguration.setLoggingEnabled(true)
     SwiftAgentConfiguration.setNetworkLoggingEnabled(true)

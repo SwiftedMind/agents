@@ -20,10 +20,6 @@ struct RootView: View {
     WeatherTool(),
   ]
 
-  func test() async throws {
-    
-  }
-
   // MARK: - Body
 
   var body: some View {
@@ -103,7 +99,8 @@ struct RootView: View {
       Use the available tools when appropriate to help answer questions.
       Be concise but informative in your responses.
       """,
-      context: ContextSource.self
+      context: ContextSource.self,
+      configuration: .direct(apiKey: Secret.OpenAI.apiKey)
     )
   }
 
