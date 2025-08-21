@@ -7,22 +7,49 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
 ## Project Overview
 
 SwiftAgent is a Swift Package that provides:
-- **Core SDK** (`Sources/SwiftAgent/`): The main agent framework with adapter support for OpenAI and extensible to other providers
+- **Core SDK** (`Sources/SwiftAgent/`): The main ModelSession framework with adapter architecture
+- **OpenAI Adapter** (`Sources/OpenAI/`): Official OpenAI integration with GPT models
+- **Simulation Adapter** (`Sources/Simulation/`): Mock adapter for testing and development
+- **Internal Utilities** (`Sources/Internal/`): Shared utilities and logging infrastructure
 - **Example App** (`Examples/Example App/`): A working iOS app demonstrating SDK usage
 - **Guidelines** (`guidelines/`): General rules and guidelines for working on this project as well as technical documentation
 
 ## Project Structure
 
 ### Core SDK (`Sources/SwiftAgent/`)
-- **`Agent.swift`** - Main agent class and core loop implementation
+- **`ModelSession.swift`** - Main ModelSession class for AI interactions
 - **`SwiftAgentConfiguration.swift`** - Global configuration and logging settings
-- **`AgentTool.swift`** - Tool definition protocols and implementations
-- **`AgentToolResolver.swift`** - Type-safe tool resolution system
-- **`AgentTranscript.swift`** - Conversation history and transcript management
-- **`PromptContext.swift`** - Context injection system for prompts
-- **`Adapters/`** - AI provider adapters (OpenAI, extensible)
-- **`Networking/`** - HTTP client and error handling
-- **`PromptBuilder/`** - DSL for building structured prompts
+- **`Agent/`** - Agent system components:
+  - **`AgentAdapter.swift`** - Protocol for AI provider adapters
+  - **`AgentGenerationError.swift`** - Error handling for generation failures
+  - **`AgentTool.swift`** - Tool definition protocols and implementations
+  - **`AgentToolCallError.swift`** - Tool-specific error handling
+  - **`AgentToolResolver.swift`** - Type-safe tool resolution system
+  - **`AgentTranscript.swift`** - Conversation history and transcript management
+- **`Networking/`** - HTTP client and networking infrastructure:
+  - **`HTTPClient.swift`** - HTTP client implementation
+  - **`HTTPErrorMessageExtractor.swift`** - Error message extraction
+  - **`NetworkLog.swift`** - Network request/response logging
+  - **`SSE.swift`** - Server-Sent Events support
+- **`Prompt Builder/`** - DSL for building structured prompts:
+  - **`PromptBuilder.swift`** - Main prompt building DSL
+  - **`PromptBuiltins.swift`** - Built-in prompt components
+- **`Prompt Context/`** - Context injection system:
+  - **`PromptContext.swift`** - Context management
+  - **`PromptContextLinkPreview.swift`** - Link preview support
+
+### OpenAI Integration (`Sources/OpenAI/`)
+- **`OpenAIAdapter.swift`** - OpenAI API adapter implementation
+- **`OpenAIConfiguration.swift`** - Configuration for OpenAI services
+- **`OpenAIGenerationOptions.swift`** - Generation options and parameters
+- **`OpenAIGenerationOptionsError.swift`** - OpenAI-specific error handling
+- **`OpenAISession.swift`** - OpenAI session management
+
+### Simulation Support (`Sources/Simulation/`)
+- **`MockableProtocols.swift`** - Protocols for mocking in tests
+- **`SimulatedGeneration.swift`** - Simulated AI generation responses
+- **`SimulatedModelSession.swift`** - Mock ModelSession for testing
+- **`SimulationAdapter.swift`** - Simulation adapter implementation
 
 ### Testing (`Tests/`)
 - **`SwiftAgentTests/`** - Core SDK unit tests using Swift Testing
@@ -31,17 +58,11 @@ SwiftAgent is a Swift Package that provides:
 ## Quick Navigation for AI Agents
 
 ### Common Entry Points
-- **Start here for core logic**: `Sources/SwiftAgent/Agent.swift:1` - Main agent implementation
-- **Tool development**: `Sources/SwiftAgent/AgentTool.swift:1` - Tool protocols and examples
-- **Adding new adapters**: `Sources/SwiftAgent/Adapters/AgentAdapter.swift:1` - Adapter protocol definition
-- **Example usage**: `Examples/Example App/RootView.swift:1` - Working agent implementation in UI
-
-### When Working on Different Areas
-- **Core agent logic**: Focus on `Sources/SwiftAgent/Agent.swift` and related files
-- **Tool system**: Check `AgentTool.swift`, `AgentToolResolver.swift`, and existing tool examples
-- **UI/Example app**: Work in `Examples/Example App/` directory
-- **Networking/HTTP**: Modify files in `Sources/SwiftAgent/Networking/`
-- **Testing**: Add tests to `Tests/SwiftAgentTests/` using Swift Testing framework
+- **Start here for core logic**: `Sources/SwiftAgent/ModelSession.swift:1` - Main ModelSession implementation
+- **Tool development**: `Sources/SwiftAgent/Agent/AgentTool.swift:1` - Tool protocols and examples
+- **Adding new adapters**: `Sources/SwiftAgent/Agent/AgentAdapter.swift:1` - Adapter protocol definition
+- **OpenAI integration**: `Sources/OpenAI/OpenAIAdapter.swift:1` - OpenAI adapter implementation
+- **Example usage**: `Examples/Example App/RootView.swift:1` - Working ModelSession implementation in UI
 
 ## General Instructions
 
