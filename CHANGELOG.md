@@ -2,83 +2,70 @@
 
 ## [0.5.0]
 
-### Breaking Changes
+### Added
 
-- **Modular Architecture**: SwiftAgent has been restructured into separate provider-specific target. The core `SwiftAgent` framework is now provider-agnostic, with OpenAI functionality moved to the dedicated `OpenAIAgent` target:
-  ```swift
-  // Before
-  import SwiftAgent
-  let agent = OpenAIAgent(tools: tools, instructions: "...")
+- **Simulated Sessions**: Introduced the `SimulatedSession` module for testing and development without API calls. The simulation system includes:
+  - `simulateResponse` methods that mirror the standard `respond` API
+  - `MockableAgentTool` protocol for creating mock tool calls and outputs
+  - `SimulatedGeneration` enum supporting tool runs, reasoning, and text or structured responses, simulating model generations
+  - Complete transcript compatibility - simulated responses work on the real transcript object, guaranteeing full compatibility with the actual agent
+  - Zero API costs during development and testing
   
-  // Now  
+  ```swift
   import OpenAISession
-  let agent = OpenAIAgent(tools: tools, instructions: "...")
-  ```
-
-- **Adapter-Specific Generation Options**: Replaced the generic `GenerationOptions` struct with adapter-specific generation options. Each adapter now defines its own `GenerationOptions` type as an associated type, providing better type safety and access to adapter-specific parameters:
-  ```swift
-  // Before
-  let options = GenerationOptions(temperature: 0.7, maximumResponseTokens: 1000)
-  let response = try await agent.respond(to: prompt, options: options)
+  import SimulatedSession
   
-  // Now
-  let options = OpenAIAdapter.GenerationOptions(temperature: 0.7, maxOutputTokens: 1000)
-  let response = try await agent.respond(to: prompt, options: options)
-  ```
-
-- **Enhanced PromptContext System**: The `PromptContext` protocol has been replaced with a generic struct wrapper that provides both user-written input and app or SDK generated context data (like link previews or vector search results). User types now conform to `PromptContextSource` instead of `PromptContext`:
-  ```swift
-  // Before
-  enum MyContext: PromptContext {
-    case vectorSearchResult(String)
-    case searchResults([String])
+  // Create mockable tool wrappers
+  struct WeatherToolMock: MockableAgentTool {
+    var tool: WeatherTool
+    func mockArguments() -> WeatherTool.Arguments { /* mock data */ }
+    func mockOutput() async throws -> WeatherTool.Output { /* mock results */ }
   }
   
-  // Now
+  // Create an OpenAI session as normal
+  let session = ModelSession.openAI(
+    tools: [WeatherTool()], // Your actual tool; the mockable tool will be used below
+    instructions: "You are a helpful assistant.",
+    apiKey: "sk-...",
+  )
+  
+  // And then use simulateResponse instead of respond
+  let response = try await session.simulateResponse(
+    to: "What's the weather?",
+    generations: [
+      .toolRun(tool: WeatherToolMock(tool: WeatherTool())),
+      .response(content: "It's sunny!")
+    ]
+  )
+  ```
+  
+- The `PromptContext` protocol has been replaced with a generic struct wrapper that provides both user-written input and app or SDK generated context data (like link previews or vector search results). User types now conform to `PromptContextSource` instead of `PromptContext`:
+  ```swift
+  // Define your context source
   enum ContextSource: PromptContextSource {
     case vectorSearchResult(String)
     case searchResults([String])
   }
-  ```
-
-- **Updated Agent Generic Parameters**: Agents now require `PromptContextSource` types instead of `PromptContext` and are initialized via a static `withContext(:tools:instructions:)` method on `OpenAIAgent`:
-  ```swift
-  // Before
-  let agent = OpenAIAgent(supplying: MyContext.self, tools: tools)
   
-  // Now
-  let agent = OpenAIAgent.withContext(ContextSource.self, tools: tools)
-  ```
-
-- **Simplified AgentTranscript.Prompt**: Removed the `GenerationOptions` field from `AgentTranscript.Prompt` as generation options are now adapter-specific and don't belong in the transcript structure.
-
-### Added
-
-- **OpenAIAgent Target**: New dedicated target containing:
-  - `OpenAIAdapter` with full OpenAI API integration
-  - `OpenAIAgent` typealias for to create agents for the OpenAI adapter
-    ```swift
-    // Configuration object
-    let agent = OpenAIAgent(
-      tools: tools, 
-      instructions: "...",
-      configuration: config
-    )
-    ```
-
-- **Link Preview Support**: The new `PromptContext` struct includes `linkPreviews` that can automatically fetch and include OpenGraph data from URLs in user input (foundation for future URL context extraction)
-
-- **Structured Context Access**: The `PromptContext<Reference>` wrapper provides clean separation between user-written input text and app or SDK generated context data:
-  ```swift
-  for entry in agent.transcript {
-    if case let .prompt(prompt) = entry {
-      print("User references: \(prompt.context.references)")
-      print("Link previews: \(prompt.context.linkPreviews)")
-    }
+  // Create a session with context support and pass the context source
+  let session = ModelSession.openAI(tools: tools, context: ContextSource.self, apiKey: "sk-...")
+  
+  // Respond with context - user input and context are kept separated in the transcript
+  let response = try await session.respond(
+    to: "What are the key features of SwiftUI?",
+    supplying: [
+      .vectorSearchResult("SwiftUI declarative syntax..."),
+      .searchResults("Apple's official SwiftUI documentation...")
+    ]
+  ) { input, context in
+    PromptTag("context", items: context.sources)
+    input
   }
   ```
 
-- **Comprehensive OpenAI Configuration**: The new `OpenAIAdapter.GenerationOptions` provides access to all OpenAI API parameters including:
+- **Link Previews in Prompt Context**: The new `PromptContext` struct includes `linkPreviews` that can automatically fetch and include metadata from URLs in user inputs
+
+- **OpenAI Generation Configuration**: The new `OpenAIGenerationOptions` type provides access to OpenAI API parameters including:
   - `include` - Additional outputs like reasoning or logprobs
   - `allowParallelToolCalls` - Control parallel tool execution
   - `reasoning` - Configuration for reasoning-capable models
@@ -90,80 +77,35 @@
   - `truncation` - Context window handling
   - And more OpenAI-specific options
 
-- **Enhanced AgentAdapter Protocol**: Added `GenerationOptions` as an associated type to the `AgentAdapter` protocol, enabling type-safe, adapter-specific configuration
+### Changed
 
-- **Agent Simulation System**: Introduced the `SimulatedSession` target for testing and development without API calls. The simulation system includes:
-  - `simulateResponse` methods that mirror the standard `respond` API
-  - `MockableAgentTool` protocol for creating mock tool calls and outputs
-  - `SimulatedGeneration` enum supporting tool runs, reasoning, and text or structured responses, simulating model generations
-  - Complete transcript compatibility - simulated responses work on the real transcript object, guaranteeing full compatibility with the actual agent
-  - Zero API costs during development and testing
-  
+- **Breaking Change**: Restructured the products in the SDK. Each provider now has its own product, e.g. `OpenAISession`
   ```swift
-  import SwiftAgent
-  import SimulatedSession
-  
-  // Create mockable tool wrappers
-  struct WeatherToolMock: MockableAgentTool {
-    var tool: WeatherTool
-    func mockArguments() -> WeatherTool.Arguments { /* mock data */ }
-    func mockOutput() async throws -> WeatherTool.Output { /* mock results */ }
-  }
-  
-  // Use simulateResponse instead of respond
-  let response = try await agent.simulateResponse(
-    to: "What's the weather?",
-    generations: [
-      .toolRun(tool: WeatherToolMock(tool: WeatherTool())),
-      .response(content: "It's sunny!")
-    ]
-  )
+  import OpenAISession
   ```
 
-### Enhanced
-
-- **Type Safety**: Generation options are now compile-time and run-time validated and specific to each adapter implementation
-
-### Migration Guide
-
-1. **Update Imports**: Change your import statements to use the appropriate provider target:
-   ```swift
-   // Replace this
-   import SwiftAgent
-   
-   // With this for OpenAI
-   import OpenAISession
-   ```
-
-2. **Update Context Types**: Rename your context protocols to conform to `PromptContextSource` instead of `PromptContext`:
-   ```swift
-   // Change protocol conformance
-   enum ContextSource: PromptContextSource { ... }
-   ```
-
-3. **Update Agent Initialization**: Use the new context reference type:
-   ```swift
-   let agent = OpenAIAgent.withContext(ContextSource.self, tools: tools)
-   ```
-
-4. **Update Context Usage**: Access context through the new structured format:
-   ```swift
-   // In prompt builders, context is now of type PromptContext<ContextSource>
-   ) { input, context in
-     // Access app-defined context sources
-     PromptTag("context", items: context.sources)
-   }
-   ```
-
-5. **Update Generation Options**: Replace generic `GenerationOptions` with adapter-specific options:
-   ```swift
-   // Update import if needed
-   let options = OpenAIAdapter.GenerationOptions(
-     temperature: 0.7,
-     maxOutputTokens: 1000,
-     reasoning: .init(effort: .medium)
-   )
-   ```
+- **Breaking Change**: Renamed nearly all the types in the SDK to close align with FoundationModels types. `Agent` is now `ModelSession`, and `OpenAIAgent` is now `OpenAISession`:
+  ```swift
+  import OpenAISession
+  
+  // Create an OpenAI session through the ModelSession type
+  let session = ModelSession.openAI(
+    tools: [WeatherTool(), CalculatorTool()],
+    instructions: "You are a helpful assistant.",
+    apiKey: "sk-...",
+  )
+  ```
+  
+- **Breaking Change**: Replaced the generic `GenerationOptions` struct with adapter-specific generation options. Each adapter now defines its own `GenerationOptions` type as an associated type, providing better type safety and access to adapter-specific parameters:
+  ```swift
+  // Before
+  let options = GenerationOptions(temperature: 0.7, maximumResponseTokens: 1000)
+  let response = try await agent.respond(to: prompt, options: options)
+  
+  // Now
+  let options = OpenAIGenerationOptions(temperature: 0.7, maxOutputTokens: 1000)
+  let response = try await session.respond(to: prompt, options: options)
+  ```
 
 ## [0.4.1]
 

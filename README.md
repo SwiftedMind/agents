@@ -166,7 +166,7 @@ enum ContextSource: PromptContextSource, PromptRepresentable {
 }
 
 // Create a session with context support and pass a context source
-let session = ModelSession.openAI(tools: tools, context: ContextSource.self)
+let session = ModelSession.openAI(tools: tools, context: ContextSource.self, apiKey: "sk-...")
 
 // Respond with context - user input and context are kept separated in the transcript
 let response = try await session.respond(
