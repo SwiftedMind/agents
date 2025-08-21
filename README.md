@@ -31,7 +31,6 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
 - [📄 License](#-license)
 - [🙏 Acknowledgments](#-acknowledgments)
 
-
 ## ✨ Features
 
 - **🎯 Zero-Setup Agent Loops** — Handle autonomous agent execution with just a few lines of code
@@ -41,7 +40,6 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
 - **🚀 Modern Swift** — Built with Swift 6, async/await, and latest concurrency features
 - **📊 Rich Logging** — Comprehensive, human-readable logging for debugging and monitoring
 - **🎛️ Flexible Configuration** — Fine-tune generation options, tools, and adapter settings
-
 
 ## 🚀 Quick Start
 
@@ -130,8 +128,6 @@ struct WeatherTool: AgentTool {
   }
 }
 ```
-
----
 
 ## 📖 Advanced Usage
 
@@ -348,8 +344,6 @@ The simulation system provides:
 - **Tool execution simulation** with mock data
 - **Complete transcript compatibility** - simulated responses work exactly like real ones
 
----
-
 ## 🔧 Configuration
 
 ### Logging
@@ -368,25 +362,17 @@ SwiftAgentConfiguration.setNetworkLoggingEnabled(true)
 // ✅ Finished
 ```
 
----
-
 ## 🧪 Development Status
 
 **⚠️ Work in Progress**: SwiftAgent is under active development. APIs may change, and breaking updates are expected. Use in production with caution.
-
----
 
 ## 📄 License
 
 SwiftAgent is available under the MIT license. See [LICENSE](LICENSE) for more information.
 
----
-
 ## 🙏 Acknowledgments
 
 - Inspired by Apple's [FoundationModels](https://developer.apple.com/documentation/foundationmodels) framework
 - Built with the amazing Swift ecosystem and community
-
----
 
 *Made with ❤️ for the Swift community*
