@@ -23,7 +23,7 @@ public extension ModelSession {
   @MainActor static func openAI(
     tools: [any AgentTool] = [],
     instructions: String = "",
-    configuration: OpenAIAdapter.Configuration,
+    configuration: OpenAIConfiguration,
   ) -> OpenAISession where Adapter == OpenAIAdapter, Context == NoContext {
     let adapter = OpenAIAdapter(tools: tools, instructions: instructions, configuration: configuration)
     return OpenAISession(adapter: adapter)
@@ -34,8 +34,8 @@ public extension ModelSession {
   @MainActor static func openAI(
     tools: [any AgentTool] = [],
     instructions: String = "",
-    configuration: OpenAIAdapter.Configuration,
     context: Context.Type,
+    configuration: OpenAIConfiguration,
   ) -> OpenAIContextualSession<Context> where Adapter == OpenAIAdapter {
     let adapter = OpenAIAdapter(tools: tools, instructions: instructions, configuration: configuration)
     return OpenAIContextualSession(adapter: adapter)
@@ -44,8 +44,8 @@ public extension ModelSession {
   @MainActor static func openAI(
     tools: [any AgentTool] = [],
     instructions: String = "",
-    apiKey: String,
     context: Context.Type,
+    apiKey: String,
   ) -> OpenAIContextualSession<Context> where Adapter == OpenAIAdapter {
     let configuration = OpenAIConfiguration.direct(apiKey: apiKey)
     let adapter = OpenAIAdapter(tools: tools, instructions: instructions, configuration: configuration)
