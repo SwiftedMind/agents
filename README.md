@@ -52,7 +52,7 @@ Add SwiftAgent to your Swift project:
 ```swift
 // Package.swift
 dependencies: [
-  .package(url: "https://github.com/SwiftedMind/SwiftAgent.git", from: "0.4.0")
+  .package(url: "https://github.com/SwiftedMind/SwiftAgent.git", from: "0.5.0")
 ]
 
 // OpenAI target
@@ -109,8 +109,8 @@ struct WeatherTool: AgentTool {
     @Guide(description: "City name")
     let city: String
     
-    @Guide(description: "Temperature unit", .oneOf(["celsius", "fahrenheit"]))
-    let unit: String = "celsius"
+    @Guide(description: "Temperature unit")
+    let unit: String
   }
   
   @Generable
