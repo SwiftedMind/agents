@@ -5,7 +5,7 @@ import FoundationModels
 import Internal
 import OpenAI
 import OSLog
-import SwiftAgent
+import Public
 
 public final class OpenAIAdapter: AgentAdapter {
   public typealias Model = OpenAI.Model
@@ -20,7 +20,7 @@ public final class OpenAIAdapter: AgentAdapter {
   public init(
     tools: [any AgentTool],
     instructions: String,
-    configuration: Configuration
+    configuration: OpenAIConfiguration
   ) {
     self.tools = tools
     self.instructions = instructions
@@ -33,7 +33,7 @@ public final class OpenAIAdapter: AgentAdapter {
     generating type: Content.Type,
     using model: Model = .default,
     including transcript: Transcript<Context>,
-    options: GenerationOptions
+    options: OpenAIGenerationOptions
   ) -> AsyncThrowingStream<Transcript<Context>.Entry, any Error> where Content: Generable, Context: PromptContextSource {
     let setup = AsyncThrowingStream<Transcript<Context>.Entry, any Error>.makeStream()
 
@@ -207,8 +207,8 @@ public final class OpenAIAdapter: AgentAdapter {
     continuation: AsyncThrowingStream<Transcript<Context>.Entry, any Error>.Continuation
   ) async throws where Content: Generable, Context: PromptContextSource {
     guard let content = message.content.first else {
-      let errorContext = GenerationError.EmptyMessageContentContext(expectedType: String(describing: type))
-      throw GenerationError.emptyMessageContent(errorContext)
+      let errorContext = AgentGenerationError.EmptyMessageContentContext(expectedType: String(describing: type))
+      throw AgentGenerationError.emptyMessageContent(errorContext)
     }
 
     switch content {
@@ -227,15 +227,15 @@ public final class OpenAIAdapter: AgentAdapter {
         continuation.yield(.response(response))
       } catch {
         AgentLog.error(error, context: "structured_response_parsing")
-        let errorContext = GenerationError.StructuredContentParsingFailedContext(
+        let errorContext = AgentGenerationError.StructuredContentParsingFailedContext(
           rawContent: text,
           underlyingError: error
         )
-        throw GenerationError.structuredContentParsingFailed(errorContext)
+        throw AgentGenerationError.structuredContentParsingFailed(errorContext)
       }
     case .refusal:
-      let errorContext = GenerationError.ContentRefusalContext(expectedType: String(describing: type))
-      throw GenerationError.contentRefusal(errorContext)
+      let errorContext = AgentGenerationError.ContentRefusalContext(expectedType: String(describing: type))
+      throw AgentGenerationError.contentRefusal(errorContext)
     }
   }
 
@@ -264,9 +264,9 @@ public final class OpenAIAdapter: AgentAdapter {
     continuation.yield(.toolCalls(Transcript.ToolCalls(calls: [toolCall])))
 
     guard let tool = tools.first(where: { $0.name == functionCall.name }) else {
-      AgentLog.error(GenerationError.unsupportedToolCalled(.init(toolName: functionCall.name)), context: "tool_not_found")
-      let errorContext = GenerationError.UnsupportedToolCalledContext(toolName: functionCall.name)
-      throw GenerationError.unsupportedToolCalled(errorContext)
+      AgentLog.error(AgentGenerationError.unsupportedToolCalled(.init(toolName: functionCall.name)), context: "tool_not_found")
+      let errorContext = AgentGenerationError.UnsupportedToolCalledContext(toolName: functionCall.name)
+      throw AgentGenerationError.unsupportedToolCalled(errorContext)
     }
 
     do {
@@ -292,7 +292,7 @@ public final class OpenAIAdapter: AgentAdapter {
       continuation.yield(transcriptEntry)
     } catch {
       AgentLog.error(error, context: "tool_call_failed_\(tool.name)")
-      throw ToolCallError(tool: tool, underlyingError: error)
+      throw AgentToolCallError(tool: tool, underlyingError: error)
     }
   }
 

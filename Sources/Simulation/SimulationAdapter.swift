@@ -5,7 +5,7 @@ import FoundationModels
 import Internal
 import OpenAI
 import OSLog
-import SwiftAgent
+import Public
 
 @MainActor
 public struct SimulationAdapter {
@@ -147,7 +147,7 @@ public struct SimulationAdapter {
       continuation.yield(transcriptEntry)
     } catch {
       AgentLog.error(error, context: "tool_call_failed_\(toolMock.tool.name)")
-      throw ToolCallError(tool: toolMock.tool, underlyingError: error)
+      throw AgentToolCallError(tool: toolMock.tool, underlyingError: error)
     }
   }
 

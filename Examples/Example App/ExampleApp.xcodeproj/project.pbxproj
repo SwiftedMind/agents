@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4E933BCC2E5626C300741337 /* SwiftAgent in Frameworks */ = {isa = PBXBuildFile; productRef = 4E933BCB2E5626C300741337 /* SwiftAgent */; };
+		4E933C042E57336000741337 /* OpenAISession in Frameworks */ = {isa = PBXBuildFile; productRef = 4E933C032E57336000741337 /* OpenAISession */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,7 +33,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4E933BCC2E5626C300741337 /* SwiftAgent in Frameworks */,
+				4E933C042E57336000741337 /* OpenAISession in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -95,7 +95,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
-				LastUpgradeCheck = 1630;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					41763F5C2C2D340E00F42070 = {
 						CreatedOnToolsVersion = 16.0;
@@ -204,6 +204,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -263,6 +264,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				VALIDATE_PRODUCT = YES;
@@ -365,9 +367,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		4E933BCB2E5626C300741337 /* SwiftAgent */ = {
+		4E933C032E57336000741337 /* OpenAISession */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = SwiftAgent;
+			productName = OpenAISession;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

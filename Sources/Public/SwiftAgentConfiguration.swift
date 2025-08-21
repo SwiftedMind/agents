@@ -3,7 +3,7 @@
 import Foundation
 import OSLog
 
-public enum AgentConfiguration {
+public enum SwiftAgentConfiguration {
   /// Enables or disables logging for the SDK.
   /// - Parameter enabled: Pass `true` to enable logging, `false` to disable.
   @MainActor public static func setLoggingEnabled(_ enabled: Bool) {

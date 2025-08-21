@@ -1,7 +1,8 @@
 // By Dennis Müller
 
 import FoundationModels
-import OpenAIAgent
+import OpenAISession
+import SimulatedSession
 import SwiftUI
 
 struct RootView: View {
@@ -10,7 +11,7 @@ struct RootView: View {
   @State private var toolCallsUsed: [String] = []
   @State private var isLoading = false
   @State private var errorMessage: String?
-  @State private var agent: OpenAIAgentWith<ContextSource>?
+  @State private var session: OpenAIContextualSession<ContextSource>?
 
   // MARK: - Tools
 
@@ -18,6 +19,10 @@ struct RootView: View {
     CalculatorTool(),
     WeatherTool(),
   ]
+
+  func test() async throws {
+    
+  }
 
   // MARK: - Body
 
@@ -91,14 +96,14 @@ struct RootView: View {
   // MARK: - Setup
 
   private func setupAgent() {
-    agent = OpenAIAgent.withContext(
-      ContextSource.self,
+    session = ModelSession.openAI(
       tools: tools,
       instructions: """
       You are a helpful assistant with access to several tools.
       Use the available tools when appropriate to help answer questions.
       Be concise but informative in your responses.
-      """
+      """,
+      context: ContextSource.self
     )
   }
 
@@ -106,7 +111,7 @@ struct RootView: View {
 
   @MainActor
   private func askAgent() async {
-    guard let agent, !userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+    guard let session, !userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
     isLoading = true
     errorMessage = nil
@@ -114,15 +119,11 @@ struct RootView: View {
     toolCallsUsed = []
 
     do {
-      let response = try await agent.respond(
-        to: userInput,
-        supplying: [.currentDate(Date())],
-        options: .init(include: [.encryptedReasoning])
-      ) { input, context in
+      let response = try await session.respond(to: userInput, supplying: [.currentDate(Date())]) { input, context in
         PromptTag("context") {
           for source in context.sources {
             switch source {
-            case .currentDate(let date):
+            case let .currentDate(date):
               PromptTag("current-date") { date }
             }
           }
@@ -130,16 +131,16 @@ struct RootView: View {
             PromptTag("url-info", attributes: ["title": linkPreview.title ?? ""])
           }
         }
-        
+
         PromptTag("input") {
           input
         }
       }
-      
+
       agentResponse = response.content
       userInput = ""
 
-      let toolResolver = agent.transcript.toolResolver(for: tools)
+      let toolResolver = session.transcript.toolResolver(for: tools)
       for entry in response.addedEntries {
         if case let .toolCalls(toolCalls) = entry {
           for toolCall in toolCalls.calls {

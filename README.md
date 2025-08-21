@@ -23,7 +23,7 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
   - [Structured Output Generation](#structured-output-generation)
   - [Custom Generation Options](#custom-generation-options)
   - [Conversation History](#conversation-history)
-  - [Agent Simulation](#agent-simulation)
+  - [Simulated Session](#simulated-session)
 - [🔧 Configuration](#-configuration)
   - [OpenAI Configuration](#openai-configuration)
   - [Logging](#logging)
@@ -35,7 +35,7 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
 ## ✨ Features
 
 - **🎯 Zero-Setup Agent Loops** — Handle autonomous agent execution with just a few lines of code
-- **🔧 Native Tool Integration** — Use `@Generable` structs from FoundationModels as agent tools seamlessly  
+- **🔧 Native Tool Integration** — Use `@Generable` structs from FoundationModels as agent tools seamlessly
 - **🌐 Adapter Agnostic** — Abstract interface supports multiple AI adapters (OpenAI included, more coming)
 - **📱 Apple-Native Design** — API inspired by FoundationModels for familiar, intuitive development
 - **🚀 Modern Swift** — Built with Swift 6, async/await, and latest concurrency features
@@ -54,13 +54,16 @@ Add SwiftAgent to your Swift project:
 dependencies: [
   .package(url: "https://github.com/SwiftedMind/SwiftAgent.git", from: "0.4.0")
 ]
+
+// OpenAI target
+.product(name: "OpenAISession", package: "SwiftAgent")
 ```
 
-Then import the provider target you need:
+Then import the target you need:
 
 ```swift
 // For OpenAI
-import OpenAIAgent
+import OpenAISession
 
 // Other providers coming soon
 ```
@@ -68,22 +71,19 @@ import OpenAIAgent
 ### Basic Usage
 
 ```swift
-import OpenAIAgent
-import FoundationModels
+import OpenAISession
 
-// Create an agent with OpenAI
-let agent = OpenAIAgent(
+// Create an OpenAI session
+let session = ModelSession.openAI(
   tools: [WeatherTool(), CalculatorTool()],
-  instructions: "You are a helpful assistant."
+  instructions: "You are a helpful assistant.",
+  apiKey: "sk-...",
 )
 
 // Run your agent
-let response = try await agent.respond(
-  to: "What's the weather like in San Francisco?",
-  using: .gpt5,
-  options: .init(include: [.encryptedReasoning])
-)
+let response = try await session.respond(to: "What's the weather like in San Francisco?")
 
+// Process response
 print(response.content)
 ```
 
@@ -91,8 +91,8 @@ print(response.content)
 
 ```swift
 // Using custom configuration
-let config = OpenAIAdapter.Configuration.direct(apiKey: "your-api-key")
-let agent = OpenAIAgent(tools: tools, instructions: "...", configuration: config)
+let configuration = OpenAIConfiguration.direct(apiKey: "your-api-key")
+let session = ModelSession.openAI(tools: tools, instructions: "...", configuration: configuration)
 ```
 
 ## 🛠️ Building Tools
@@ -140,7 +140,7 @@ struct WeatherTool: AgentTool {
 Separate user input from contextual information for cleaner prompt augmentation and better transcript organization:
 
 ```swift
-import OpenAIAgent
+import OpenAISession
 
 // Define your context types
 enum ContextSource: PromptContextSource, PromptRepresentable {
@@ -165,27 +165,26 @@ enum ContextSource: PromptContextSource, PromptRepresentable {
   }
 }
 
-// Create an agent with context support
-let agent = OpenAIAgent.withContext(ContextSource.self, tools: tools)
+// Create a session with context support and pass a context source
+let session = ModelSession.openAI(tools: tools, context: ContextSource.self)
 
 // Respond with context - user input and context are kept separated in the transcript
-let response = try await agent.respond(
+let response = try await session.respond(
   to: "What are the key features of SwiftUI?",
   supplying: [
     .vectorSearchResult("SwiftUI declarative syntax..."),
     .documentContext("Apple's official SwiftUI documentation...")
-  ],
-  options: .init(include: [.encryptedReasoning])
+  ]
 ) { input, context in
   PromptTag("context", items: context.sources)
   input
 }
 
 // The transcript now clearly separates user input from augmented context
-for entry in agent.transcript {
+for entry in session.transcript {
   if case let .prompt(prompt) = entry {
     print("User input: \(prompt.input)")
-    print("Context sources: \(prompt.sources.count)")
+    print("Context sources: \(prompt.context.sources.count)")
   }
 }
 ```
@@ -210,12 +209,13 @@ extension WeatherTool {
 
 // Use the tool resolver to get compile-time safe tool access
 let tools: [any AgentTool<ResolvedToolRun>] = [WeatherTool(), CalculatorTool()]
-let agent = OpenAIAgent(tools: tools, instructions: "...")
+let configuration = OpenAIConfiguration.direct(apiKey: "sk-...")
+let session = ModelSession.openAI(tools: tools, instructions: "...", configuration: configuration)
 
 // After the agent runs, resolve tool calls for UI display
-let toolResolver = agent.transcript.toolResolver(for: tools)
+let toolResolver = session.transcript.toolResolver(for: tools)
 
-for entry in agent.transcript {
+for entry in session.transcript {
   if case let .toolCalls(toolCalls) = entry {
     for toolCall in toolCalls {
       let resolvedTool = try toolResolver.resolve(toolCall)
@@ -254,11 +254,9 @@ struct Task {
   let completed: Bool
 }
 
-let response = try await agent.respond(
+let response = try await session.respond(
   to: "Create a todo list for planning a vacation",
-  generating: TaskList.self,
-  using: .gpt5,
-  options: .init(include: [.encryptedReasoning])
+  generating: TaskList.self
 )
 
 // response.content is now a strongly-typed TaskList
@@ -269,16 +267,15 @@ for task in response.content.tasks {
 
 ### Custom Generation Options
 
-Each adapter defines its own set of generation options. For example:
+Specify generation options for your responses:
 
 ```swift
-let options = OpenAIAdapter.GenerationOptions(
+let options = OpenAIGenerationOptions(
   maxOutputTokens: 1000,
-  temperature: 0.7,
-  include: [.encryptedReasoning]
+  temperature: 0.7
 )
 
-let response = try await agent.respond(
+let response = try await session.respond(
   to: "Help me analyze this data",
   using: .gpt5,
   options: options
@@ -291,13 +288,10 @@ Access full conversation transcripts:
 
 ```swift
 // Continue conversations naturally
-try await agent.respond(
-  to: "What was my first question?",
-  options: .init(include: [.encryptedReasoning])
-)
+try await session.respond(to: "What was my first question?")
 
 // Access conversation history
-for entry in agent.transcript {
+for entry in session.transcript {
   switch entry {
   case .prompt(let prompt):
     print("User: \(prompt.input)")
@@ -310,13 +304,13 @@ for entry in agent.transcript {
 }
 ```
 
-### Agent Simulation
+### Simulated Session
 
 Test and develop your agents without making API calls using the built-in simulation system. Perfect for prototyping, testing, and developing UIs before integrating with live APIs.
 
 ```swift
-import OpenAIAgent
-import AgentSimulation
+import OpenAISession
+import SimulatedSession
 
 // Create mockable tool wrappers
 struct WeatherToolMock: MockableAgentTool {
@@ -337,7 +331,7 @@ struct WeatherToolMock: MockableAgentTool {
 }
 
 // Use simulateResponse instead of respond
-let response = try await agent.simulateResponse(
+let response = try await session.simulateResponse(
   to: "What's the weather like in San Francisco?",
   generations: [
     .toolRun(tool: WeatherToolMock(tool: WeatherTool())),
@@ -358,31 +352,14 @@ The simulation system provides:
 
 ## 🔧 Configuration
 
-### OpenAI Configuration
-
-```swift
-import OpenAIAgent
-
-// Method 1: Configuration object
-let config = OpenAIAdapter.Configuration.direct(
-  apiKey: "sk-...",
-  baseURL: URL(string: "https://api.openai.com")!
-)
-let agent = OpenAIAgent(tools: tools, instructions: "...", configuration: config)
-
-// Method 2: Global default configuration
-OpenAIAdapter.Configuration.setDefaultConfiguration(config)
-let agent = OpenAIAgent(tools: tools, instructions: "...")
-```
-
 ### Logging
 
 ```swift
 // Enable comprehensive logging
-AgentConfiguration.setLoggingEnabled(true)
+SwiftAgentConfiguration.setLoggingEnabled(true)
 
 // Enable full request/response network logging
-AgentConfiguration.setNetworkLoggingEnabled(true)
+SwiftAgentConfiguration.setNetworkLoggingEnabled(true)
 
 // Logs show:
 // 🟢 Agent start — model=gpt-5 | tools=weather, calculator

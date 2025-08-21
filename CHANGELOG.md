@@ -11,7 +11,7 @@
   let agent = OpenAIAgent(tools: tools, instructions: "...")
   
   // Now  
-  import OpenAIAgent
+  import OpenAISession
   let agent = OpenAIAgent(tools: tools, instructions: "...")
   ```
 
@@ -92,7 +92,7 @@
 
 - **Enhanced AgentAdapter Protocol**: Added `GenerationOptions` as an associated type to the `AgentAdapter` protocol, enabling type-safe, adapter-specific configuration
 
-- **Agent Simulation System**: Introduced the `AgentSimulation` target for testing and development without API calls. The simulation system includes:
+- **Agent Simulation System**: Introduced the `SimulatedSession` target for testing and development without API calls. The simulation system includes:
   - `simulateResponse` methods that mirror the standard `respond` API
   - `MockableAgentTool` protocol for creating mock tool calls and outputs
   - `SimulatedGeneration` enum supporting tool runs, reasoning, and text or structured responses, simulating model generations
@@ -101,7 +101,7 @@
   
   ```swift
   import SwiftAgent
-  import AgentSimulation
+  import SimulatedSession
   
   // Create mockable tool wrappers
   struct WeatherToolMock: MockableAgentTool {
@@ -132,7 +132,7 @@
    import SwiftAgent
    
    // With this for OpenAI
-   import OpenAIAgent
+   import OpenAISession
    ```
 
 2. **Update Context Types**: Rename your context protocols to conform to `PromptContextSource` instead of `PromptContext`:

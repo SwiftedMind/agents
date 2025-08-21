@@ -2,7 +2,7 @@
 
 import Foundation
 
-public enum GenerationError: Error, LocalizedError {
+public enum AgentGenerationError: Error, LocalizedError {
   case unexpectedStructuredResponse(UnexpectedStructuredResponseContext)
   case unsupportedToolCalled(UnsupportedToolCalledContext)
   case emptyMessageContent(EmptyMessageContentContext)
@@ -28,7 +28,7 @@ public enum GenerationError: Error, LocalizedError {
   }
 }
 
-public extension GenerationError {
+public extension AgentGenerationError {
   struct UnsupportedToolCalledContext: Sendable {
     /// The name of the tool that the model tried to call.
     var toolName: String
@@ -39,7 +39,7 @@ public extension GenerationError {
   }
 }
 
-public extension GenerationError {
+public extension AgentGenerationError {
   struct UnexpectedStructuredResponseContext: Sendable {
     public init() {}
   }

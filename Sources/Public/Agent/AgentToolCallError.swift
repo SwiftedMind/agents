@@ -3,7 +3,7 @@
 import Foundation
 import FoundationModels
 
-public struct ToolCallError: Error, LocalizedError {
+public struct AgentToolCallError: Error, LocalizedError {
   /// The tool that produced the error.
   public var tool: any FoundationModels.Tool
 

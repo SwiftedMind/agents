@@ -5,7 +5,7 @@ import FoundationModels
 import Internal
 
 @Observable @MainActor
-public final class Agent<Adapter: AgentAdapter, Context: PromptContextSource> {
+public final class ModelSession<Adapter: AgentAdapter, Context: PromptContextSource> {
   public typealias Transcript = AgentTranscript<Context>
   public typealias Context = PromptContext<Context>
   public typealias Response<Content: Generable> = AgentResponse<Adapter, Context, Content>
@@ -21,26 +21,11 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContextSource> {
 
   // MARK: - Private Response Helpers
 
-  /// Fetches link previews from URLs found in the input text
-  private func fetchLinkPreviews(from input: String) async -> [PromptContextLinkPreview] {
-    let urls = URLMetadataProvider.extractURLs(from: input)
-    guard !urls.isEmpty else { return [] }
-
-    let metadataList = await metadataProvider.fetchMetadata(for: urls)
-    return metadataList.map { metadata in
-      PromptContextLinkPreview(
-        originalURL: metadata.originalURL,
-        url: metadata.url,
-        title: metadata.title
-      )
-    }
-  }
-
   /// Processes a stream response for String content
   private func processStringResponse(
     from prompt: Transcript.Prompt,
     using model: Adapter.Model,
-    options: Adapter.GenerationOptions
+    options: Adapter.GenerationOptions?
   ) async throws -> Response<String> {
     let promptEntry = Transcript.Entry.prompt(prompt)
     transcript.append(promptEntry)
@@ -50,7 +35,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContextSource> {
       generating: String.self,
       using: model,
       including: transcript,
-      options: options
+      options: options ?? .automatic(for: model)
     )
     var responseContent: [String] = []
     var addedEntities: [Transcript.Entry] = []
@@ -83,7 +68,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContextSource> {
     from prompt: Transcript.Prompt,
     generating type: Content.Type,
     using model: Adapter.Model,
-    options: Adapter.GenerationOptions
+    options: Adapter.GenerationOptions?
   ) async throws -> Response<Content> where Content: Generable {
     let promptEntry = Transcript.Entry.prompt(prompt)
     transcript.append(promptEntry)
@@ -93,7 +78,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContextSource> {
       generating: type,
       using: model,
       including: transcript,
-      options: options
+      options: options ?? .automatic(for: model)
     )
     var addedEntities: [Transcript.Entry] = []
 
@@ -119,19 +104,34 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContextSource> {
       }
     }
 
-    let errorContext = GenerationError.UnexpectedStructuredResponseContext()
-    throw GenerationError.unexpectedStructuredResponse(errorContext)
+    let errorContext = AgentGenerationError.UnexpectedStructuredResponseContext()
+    throw AgentGenerationError.unexpectedStructuredResponse(errorContext)
+  }
+
+  /// Fetches link previews from URLs found in the input text
+  private func fetchLinkPreviews(from input: String) async -> [PromptContextLinkPreview] {
+    let urls = URLMetadataProvider.extractURLs(from: input)
+    guard !urls.isEmpty else { return [] }
+
+    let metadataList = await metadataProvider.fetchMetadata(for: urls)
+    return metadataList.map { metadata in
+      PromptContextLinkPreview(
+        originalURL: metadata.originalURL,
+        url: metadata.url,
+        title: metadata.title
+      )
+    }
   }
 }
 
 // MARK: - Agent + String Responses
 
-public extension Agent {
+public extension ModelSession {
   @discardableResult
   func respond(
     to prompt: String,
     using model: Adapter.Model = .default,
-    options: Adapter.GenerationOptions = Adapter.GenerationOptions()
+    options: Adapter.GenerationOptions? = nil
   ) async throws -> Response<String> {
     let prompt = Transcript.Prompt(input: prompt, embeddedPrompt: prompt)
     return try await processStringResponse(from: prompt, using: model, options: options)
@@ -141,7 +141,7 @@ public extension Agent {
   func respond(
     to prompt: Prompt,
     using model: Adapter.Model = .default,
-    options: Adapter.GenerationOptions = Adapter.GenerationOptions()
+    options: Adapter.GenerationOptions? = nil
   ) async throws -> Response<String> {
     try await respond(to: prompt.formatted(), using: model, options: options)
   }
@@ -149,7 +149,7 @@ public extension Agent {
   @discardableResult
   func respond(
     using model: Adapter.Model = .default,
-    options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
+    options: Adapter.GenerationOptions? = nil,
     @PromptBuilder prompt: () throws -> Prompt
   ) async throws -> Response<String> {
     try await respond(to: prompt().formatted(), using: model, options: options)
@@ -158,13 +158,13 @@ public extension Agent {
 
 // MARK: - Agent + Generic Responses
 
-public extension Agent {
+public extension ModelSession {
   @discardableResult
   func respond<Content>(
     to prompt: String,
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
-    options: Adapter.GenerationOptions = Adapter.GenerationOptions()
+    options: Adapter.GenerationOptions? = nil
   ) async throws -> Response<Content> where Content: Generable {
     let prompt = Transcript.Prompt(input: prompt, embeddedPrompt: prompt)
     return try await processStructuredResponse(from: prompt, generating: type, using: model, options: options)
@@ -175,7 +175,7 @@ public extension Agent {
     to prompt: Prompt,
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
-    options: Adapter.GenerationOptions = Adapter.GenerationOptions()
+    options: Adapter.GenerationOptions? = nil
   ) async throws -> Response<Content> where Content: Generable {
     try await respond(
       to: prompt.formatted(),
@@ -189,7 +189,7 @@ public extension Agent {
   func respond<Content>(
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
-    options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
+    options: Adapter.GenerationOptions? = nil,
     @PromptBuilder prompt: () throws -> Prompt
   ) async throws -> Response<Content> where Content: Generable {
     try await respond(
@@ -203,13 +203,13 @@ public extension Agent {
 
 // MARK: - Agent + Context Responses
 
-public extension Agent {
+public extension ModelSession {
   @discardableResult
   func respond(
     to input: String,
     supplying contextItems: [Context],
     using model: Adapter.Model = .default,
-    options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
+    options: Adapter.GenerationOptions? = nil,
     @PromptBuilder embeddingInto prompt: @Sendable (_ input: String, _ context: PromptContext<Context>) -> Prompt
   ) async throws -> Response<String> {
     let linkPreviews = await fetchLinkPreviews(from: input)
@@ -229,7 +229,7 @@ public extension Agent {
     supplying contextItems: [Context],
     generating type: Content.Type = Content.self,
     using model: Adapter.Model = .default,
-    options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
+    options: Adapter.GenerationOptions? = nil,
     @PromptBuilder embeddingInto prompt: @Sendable (_ prompt: String, _ context: PromptContext<Context>) -> Prompt
   ) async throws -> Response<Content> where Content: Generable {
     let linkPreviews = await fetchLinkPreviews(from: input)
@@ -251,9 +251,9 @@ public struct AgentResponse<Adapter: AgentAdapter, Context: PromptContextSource,
   public var content: Content
 
   /// The transcript entries that the prompt produced.
-  public var addedEntries: [Agent<Adapter, Context>.Transcript.Entry]
+  public var addedEntries: [ModelSession<Adapter, Context>.Transcript.Entry]
 
-  package init(content: Content, addedEntries: [Agent<Adapter, Context>.Transcript.Entry]) {
+  package init(content: Content, addedEntries: [ModelSession<Adapter, Context>.Transcript.Entry]) {
     self.content = content
     self.addedEntries = addedEntries
   }

@@ -2,10 +2,9 @@
 
 import Foundation
 import FoundationModels
-import SwiftAgent
+@_exported import Public
 
-public extension Agent {
-  
+public extension ModelSession {
   private var simulationAdapter: SimulationAdapter {
     SimulationAdapter()
   }
@@ -13,7 +12,7 @@ public extension Agent {
   private func simulationAdapter(with configuration: SimulationAdapter.Configuration) -> SimulationAdapter {
     SimulationAdapter(configuration: configuration)
   }
-  
+
   @discardableResult
   func simulateResponse(
     to prompt: String,
@@ -90,13 +89,13 @@ public extension Agent {
       }
     }
 
-    let errorContext = GenerationError.UnexpectedStructuredResponseContext()
-    throw GenerationError.unexpectedStructuredResponse(errorContext)
+    let errorContext = AgentGenerationError.UnexpectedStructuredResponseContext()
+    throw AgentGenerationError.unexpectedStructuredResponse(errorContext)
   }
 
   @discardableResult
   func simulateResponse(
-    to prompt: SwiftAgent.Prompt,
+    to prompt: Public.Prompt,
     generations: [SimulatedGeneration<String>],
     configuration: SimulationAdapter.Configuration = SimulationAdapter.Configuration()
   ) async throws -> Response<String> {
@@ -105,7 +104,7 @@ public extension Agent {
 
   @discardableResult
   func simulateResponse<Content>(
-    to prompt: SwiftAgent.Prompt,
+    to prompt: Public.Prompt,
     generations: [SimulatedGeneration<Content>],
     configuration: SimulationAdapter.Configuration = SimulationAdapter.Configuration()
   ) async throws -> Response<Content> where Content: MockableGenerable {
@@ -116,7 +115,7 @@ public extension Agent {
   func simulateResponse(
     generations: [SimulatedGeneration<String>],
     configuration: SimulationAdapter.Configuration = SimulationAdapter.Configuration(),
-    @SwiftAgent.PromptBuilder prompt: () throws -> SwiftAgent.Prompt
+    @Public.PromptBuilder prompt: () throws -> Public.Prompt
   ) async throws -> Response<String> {
     try await simulateResponse(to: prompt().formatted(), generations: generations, configuration: configuration)
   }
@@ -125,7 +124,7 @@ public extension Agent {
   func simulateResponse<Content>(
     generations: [SimulatedGeneration<Content>],
     configuration: SimulationAdapter.Configuration = SimulationAdapter.Configuration(),
-    @SwiftAgent.PromptBuilder prompt: () throws -> SwiftAgent.Prompt
+    @Public.PromptBuilder prompt: () throws -> Public.Prompt
   ) async throws -> Response<Content> where Content: MockableGenerable {
     try await simulateResponse(to: prompt().formatted(), generations: generations, configuration: configuration)
   }

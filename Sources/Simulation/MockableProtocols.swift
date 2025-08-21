@@ -2,7 +2,7 @@
 
 import Foundation
 import FoundationModels
-import SwiftAgent
+import Public
 
 public protocol MockableAgentTool<Tool>: Sendable where Tool.Arguments: Encodable {
   associatedtype Tool: AgentTool

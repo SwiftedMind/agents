@@ -15,7 +15,7 @@ SwiftAgent is a Swift Package that provides:
 
 ### Core SDK (`Sources/SwiftAgent/`)
 - **`Agent.swift`** - Main agent class and core loop implementation
-- **`AgentConfiguration.swift`** - Global configuration and logging settings
+- **`SwiftAgentConfiguration.swift`** - Global configuration and logging settings
 - **`AgentTool.swift`** - Tool definition protocols and implementations
 - **`AgentToolResolver.swift`** - Type-safe tool resolution system
 - **`AgentTranscript.swift`** - Conversation history and transcript management

@@ -1,7 +1,7 @@
 // By Dennis Müller
 
 import FoundationModels
-import OpenAIAgent
+import OpenAISession
 import SwiftUI
 
 @main
@@ -12,8 +12,8 @@ struct ExampleApp: App {
     OpenAIAdapter.Configuration.setDefaultConfiguration(configuration)
 
     // Enable logging for development
-    AgentConfiguration.setLoggingEnabled(true)
-    AgentConfiguration.setNetworkLoggingEnabled(true)
+    SwiftAgentConfiguration.setLoggingEnabled(true)
+    SwiftAgentConfiguration.setNetworkLoggingEnabled(true)
   }
 
   var body: some Scene {

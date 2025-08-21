@@ -6,7 +6,7 @@ import Internal
 
 @MainActor
 public protocol AgentAdapter {
-  associatedtype GenerationOptions: AdapterGenerationOptions
+  associatedtype GenerationOptions: AdapterGenerationOptions<Model>
   associatedtype Model: AdapterModel
   associatedtype Configuration: AdapterConfiguration
   associatedtype ConfigurationError: Error & LocalizedError
@@ -24,11 +24,13 @@ public protocol AgentAdapter {
 
 // MARK: - GenerationOptions
 
-public protocol AdapterGenerationOptions {
+public protocol AdapterGenerationOptions<Model> {
   associatedtype Model: AdapterModel
   associatedtype GenerationOptionsError: Error & LocalizedError
 
   init()
+
+  static func automatic(for model: Model) -> Self
 
   /// Validates the generation options for the given model.
   /// - Parameter model: The model to validate options against
@@ -45,17 +47,4 @@ public protocol AdapterModel {
 // MARK: Configuration
 
 @MainActor
-public protocol AdapterConfiguration: Sendable {
-  /// The default configuration used when no explicit configuration is supplied.
-  static var `default`: Self { get set }
-
-  /// Override the default configuration used by convenience initializers/providers.
-  static func setDefaultConfiguration(_ configuration: Self)
-}
-
-public extension AdapterConfiguration {
-  /// Overrides the static default configuration used by convenience providers.
-  static func setDefaultConfiguration(_ configuration: Self) {
-    `default` = configuration
-  }
-}
+public protocol AdapterConfiguration: Sendable {}
