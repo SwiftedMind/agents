@@ -2,7 +2,7 @@
 
 import Foundation
 import FoundationModels
-import Public
+import SwiftAgent
 
 public enum SimulatedGeneration<Content>: Sendable where Content: Generable, Content: Sendable {
   case reasoning(summary: String)

@@ -2,7 +2,7 @@
 
 import Foundation
 import FoundationModels
-@_exported import Public
+@_exported import SwiftAgent
 
 public typealias OpenAIContextualSession<Context: PromptContextSource> = ModelSession<OpenAIAdapter, Context>
 public typealias OpenAISession = OpenAIContextualSession<NoContext>

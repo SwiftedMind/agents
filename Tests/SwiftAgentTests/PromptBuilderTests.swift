@@ -1,6 +1,6 @@
 // By Dennis Müller
 
-@testable import Public
+@testable import SwiftAgent
 import Testing
 
 @Suite("PromptBuilder Tests")

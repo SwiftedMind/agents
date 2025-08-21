@@ -5,7 +5,7 @@ import FoundationModels
 import Internal
 import OpenAI
 import OSLog
-import Public
+import SwiftAgent
 
 public final class OpenAIAdapter: AgentAdapter {
   public typealias Model = OpenAI.Model

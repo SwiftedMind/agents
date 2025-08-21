@@ -8,7 +8,7 @@ let package = Package(
     .iOS(.v26),
   ],
   products: [
-    .library(name: "OpenAISession", targets: ["OpenAISession", "SimulatedSession"]),
+    .library(name: "OpenAISession", targets: ["OpenAISession", "SimulatedSession", "SwiftAgent"]),
   ],
   dependencies: [
     .package(url: "https://github.com/SwiftedMind/swift-openai-responses", branch: "main"),
@@ -18,13 +18,13 @@ let package = Package(
       name: "Internal"
     ),
     .target(
-      name: "Public",
+      name: "SwiftAgent",
       dependencies: ["Internal"]
     ),
     .target(
       name: "OpenAISession",
       dependencies: [
-        "Public",
+        "SwiftAgent",
         .product(name: "OpenAI", package: "swift-openai-responses"),
       ],
       path: "Sources/OpenAI",
@@ -32,7 +32,7 @@ let package = Package(
     .target(
       name: "SimulatedSession",
       dependencies: [
-        "Public",
+        "SwiftAgent",
         "Internal",
         .product(name: "OpenAI", package: "swift-openai-responses"),
       ],
@@ -40,7 +40,7 @@ let package = Package(
     ),
     .testTarget(
       name: "SwiftAgentTests",
-      dependencies: ["Public"]
+      dependencies: ["SwiftAgent"]
     ),
   ]
 )

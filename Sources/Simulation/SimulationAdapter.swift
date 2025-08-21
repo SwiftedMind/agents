@@ -5,7 +5,7 @@ import FoundationModels
 import Internal
 import OpenAI
 import OSLog
-import Public
+import SwiftAgent
 
 @MainActor
 public struct SimulationAdapter {
