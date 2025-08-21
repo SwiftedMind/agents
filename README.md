@@ -50,7 +50,7 @@ Add SwiftAgent to your Swift project:
 ```swift
 // Package.swift
 dependencies: [
-  .package(url: "https://github.com/SwiftedMind/SwiftAgent.git", from: "0.5.0")
+  .package(url: "https://github.com/SwiftedMind/SwiftAgent.git", branch: "main")
 ]
 
 // OpenAI target
