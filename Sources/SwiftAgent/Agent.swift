@@ -2,6 +2,7 @@
 
 import Foundation
 import FoundationModels
+import Internal
 
 @Observable @MainActor
 public final class Agent<Adapter: AgentAdapter, Context: PromptContextSource> {
@@ -11,6 +12,7 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContextSource> {
 
   package let adapter: Adapter
   public var transcript: Transcript
+  private let metadataProvider = URLMetadataProvider()
 
   package init(adapter: Adapter) {
     transcript = Transcript()
@@ -18,6 +20,21 @@ public final class Agent<Adapter: AgentAdapter, Context: PromptContextSource> {
   }
 
   // MARK: - Private Response Helpers
+
+  /// Fetches link previews from URLs found in the input text
+  private func fetchLinkPreviews(from input: String) async -> [PromptContextLinkPreview] {
+    let urls = URLMetadataProvider.extractURLs(from: input)
+    guard !urls.isEmpty else { return [] }
+
+    let metadataList = await metadataProvider.fetchMetadata(for: urls)
+    return metadataList.map { metadata in
+      PromptContextLinkPreview(
+        originalURL: metadata.originalURL,
+        url: metadata.url,
+        title: metadata.title
+      )
+    }
+  }
 
   /// Processes a stream response for String content
   private func processStringResponse(
@@ -195,7 +212,8 @@ public extension Agent {
     options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
     @PromptBuilder embeddingInto prompt: @Sendable (_ input: String, _ context: PromptContext<Context>) -> Prompt
   ) async throws -> Response<String> {
-    let context = PromptContext(sources: contextItems, linkPreviews: [])
+    let linkPreviews = await fetchLinkPreviews(from: input)
+    let context = PromptContext(sources: contextItems, linkPreviews: linkPreviews)
 
     let prompt = Transcript.Prompt(
       input: input,
@@ -214,7 +232,8 @@ public extension Agent {
     options: Adapter.GenerationOptions = Adapter.GenerationOptions(),
     @PromptBuilder embeddingInto prompt: @Sendable (_ prompt: String, _ context: PromptContext<Context>) -> Prompt
   ) async throws -> Response<Content> where Content: Generable {
-    let context = PromptContext(sources: contextItems, linkPreviews: [])
+    let linkPreviews = await fetchLinkPreviews(from: input)
+    let context = PromptContext(sources: contextItems, linkPreviews: linkPreviews)
 
     let prompt = Transcript.Prompt(
       input: input,

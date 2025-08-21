@@ -19,12 +19,22 @@ public struct PromptContext<Source>: Sendable, Equatable where Source: PromptCon
 public protocol PromptContextSource: Sendable, Equatable {}
 public struct NoContext: PromptContextSource {}
 
-public struct PromptContextLinkPreview: Sendable, Equatable {
-  public var title: String
-  public var description: String
 
-  public init(url: URL) async throws {
-    title = ""
-    description = ""
+// MARK: - Link Previews
+
+public struct PromptContextLinkPreview: Sendable, Equatable {
+  /// The original URL from user input before any redirects
+  public var originalURL: URL
+
+  /// The final URL after following redirects
+  public var url: URL
+
+  /// The title of the linked content
+  public var title: String?
+
+  public init(originalURL: URL, url: URL, title: String? = nil) {
+    self.originalURL = originalURL
+    self.url = url
+    self.title = title
   }
 }

@@ -126,6 +126,9 @@ struct RootView: View {
               PromptTag("current-date") { date }
             }
           }
+          for linkPreview in context.linkPreviews {
+            PromptTag("url-info", attributes: ["title": linkPreview.title ?? ""])
+          }
         }
         
         PromptTag("input") {
