@@ -39,27 +39,39 @@ public final class ModelSession<Adapter: AgentAdapter, Context: PromptContextSou
     )
     var responseContent: [String] = []
     var addedEntities: [Transcript.Entry] = []
+    var aggregatedUsage: TokenUsage?
 
-    for try await entry in stream {
-      transcript.append(entry)
-      addedEntities.append(entry)
+    for try await update in stream {
+      switch update {
+      case let .transcript(entry):
+        transcript.append(entry)
+        addedEntities.append(entry)
 
-      if case let .response(response) = entry {
-        for segment in response.segments {
-          switch segment {
-          case let .text(textSegment):
-            responseContent.append(textSegment.content)
-          case .structure:
-            // Not applicable here
-            break
+        if case let .response(response) = entry {
+          for segment in response.segments {
+            switch segment {
+            case let .text(textSegment):
+              responseContent.append(textSegment.content)
+            case .structure:
+              // Not applicable here
+              break
+            }
           }
+        }
+      case let .tokenUsage(usage):
+        if var current = aggregatedUsage {
+          current.merge(usage)
+          aggregatedUsage = current
+        } else {
+          aggregatedUsage = usage
         }
       }
     }
 
     return AgentResponse<Adapter, Context, String>(
       content: responseContent.joined(separator: "\n"),
-      addedEntries: addedEntities
+      addedEntries: addedEntities,
+      tokenUsage: aggregatedUsage
     )
   }
 
@@ -81,25 +93,37 @@ public final class ModelSession<Adapter: AgentAdapter, Context: PromptContextSou
       options: options ?? .automatic(for: model)
     )
     var addedEntities: [Transcript.Entry] = []
+    var aggregatedUsage: TokenUsage?
 
-    for try await entry in stream {
-      transcript.append(entry)
-      addedEntities.append(entry)
+    for try await update in stream {
+      switch update {
+      case let .transcript(entry):
+        transcript.append(entry)
+        addedEntities.append(entry)
 
-      if case let .response(response) = entry {
-        for segment in response.segments {
-          switch segment {
-          case .text:
-            // Not applicable here
-            break
-          case let .structure(structuredSegment):
-            // We can return here since a structured response can only happen once
-            // TODO: Handle errors here in some way
-            return try AgentResponse<Adapter, Context, Content>(
-              content: Content(structuredSegment.content),
-              addedEntries: addedEntities
-            )
+        if case let .response(response) = entry {
+          for segment in response.segments {
+            switch segment {
+            case .text:
+              // Not applicable here
+              break
+            case let .structure(structuredSegment):
+              // We can return here since a structured response can only happen once
+              // TODO: Handle errors here in some way
+              return try AgentResponse<Adapter, Context, Content>(
+                content: Content(structuredSegment.content),
+                addedEntries: addedEntities,
+                tokenUsage: aggregatedUsage
+              )
+            }
           }
+        }
+      case let .tokenUsage(usage):
+        if var current = aggregatedUsage {
+          current.merge(usage)
+          aggregatedUsage = current
+        } else {
+          aggregatedUsage = usage
         }
       }
     }
@@ -253,8 +277,16 @@ public struct AgentResponse<Adapter: AgentAdapter, Context: PromptContextSource,
   /// The transcript entries that the prompt produced.
   public var addedEntries: [ModelSession<Adapter, Context>.Transcript.Entry]
 
-  package init(content: Content, addedEntries: [ModelSession<Adapter, Context>.Transcript.Entry]) {
+  /// Aggregated token usage for this response across all internal steps.
+  public var tokenUsage: TokenUsage?
+
+  package init(
+    content: Content,
+    addedEntries: [ModelSession<Adapter, Context>.Transcript.Entry],
+    tokenUsage: TokenUsage?
+  ) {
     self.content = content
     self.addedEntries = addedEntries
+    self.tokenUsage = tokenUsage
   }
 }
