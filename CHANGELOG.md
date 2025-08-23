@@ -1,5 +1,24 @@
 # Changelog
 
+## [Upcoming]
+
+### Added
+
+- **Token Usage Tracking and Reporting**: Added token usage monitoring across all AI interactions with logging and programmatic access to usage metrics.
+
+  ```swift
+  let response = try await session.respond(to: "What's the weather?")
+  
+  // Access aggregated token usage from the response
+  if let usage = response.tokenUsage {
+    print("Total tokens used: \(usage.totalTokens ?? 0)")
+    print("Input tokens: \(usage.inputTokens ?? 0)")
+    print("Output tokens: \(usage.outputTokens ?? 0)")
+    print("Cached tokens: \(usage.cachedTokens ?? 0)")
+    print("Reasoning tokens: \(usage.reasoningTokens ?? 0)")
+  }
+  ```
+
 ## [0.5.0]
 
 ### Added
