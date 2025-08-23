@@ -13,13 +13,13 @@ public struct SimulationAdapter {
   public typealias Transcript<Context: PromptContextSource> = AgentTranscript<Context>
 
   public struct Configuration: Sendable {
-    /// The delay between simulated model generations.
+    /// The delay between simulated model generations. Defaults to 2 seconds.
     public var generationDelay: Duration
 
     /// Optional simulated aggregate token usage reported for the run.
     public var tokenUsage: TokenUsage?
 
-    public init(generationDelay: Duration = .milliseconds(500), tokenUsage: TokenUsage? = nil) {
+    public init(generationDelay: Duration = .seconds(2), tokenUsage: TokenUsage? = nil) {
       self.generationDelay = generationDelay
       self.tokenUsage = tokenUsage
     }
