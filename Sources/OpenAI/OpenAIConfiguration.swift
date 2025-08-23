@@ -21,6 +21,7 @@ public struct OpenAIConfiguration: AdapterConfiguration {
     responsesPath: String = "/v1/responses"
   ) -> OpenAIConfiguration {
     let encoder = JSONEncoder()
+    encoder.outputFormatting = .sortedKeys
     let decoder = JSONDecoder()
     // Keep defaults; OpenAI models define their own coding keys
 
