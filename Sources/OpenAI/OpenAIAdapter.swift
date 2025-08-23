@@ -298,10 +298,11 @@ public final class OpenAIAdapter: AgentAdapter {
       let output = try await callTool(tool, with: generatedContent)
 
       let toolOutputEntry = Transcript<Context>.ToolOutput(
-        id: UUID().uuidString,
+        id: functionCall.id,
         callId: functionCall.callId,
         toolName: functionCall.name,
         segment: .structure(AgentTranscript.StructuredSegment(content: output)),
+        status: transcriptStatusFromOpenAIStatus(functionCall.status),
       )
 
       let transcriptEntry = Transcript<Context>.Entry.toolOutput(toolOutputEntry)
@@ -386,7 +387,7 @@ public final class OpenAIAdapter: AgentAdapter {
       parallelToolCalls: options.allowParallelToolCalls,
       previousResponseId: nil,
       prompt: nil,
-      promptCacheKey: nil,
+      promptCacheKey: options.promptCacheKey,
       reasoning: options.reasoning,
       safetyIdentifier: options.safetyIdentifier,
       serviceTier: options.serviceTier,
@@ -496,7 +497,7 @@ public final class OpenAIAdapter: AgentAdapter {
           let item = Item.FunctionCall(
             arguments: toolCall.arguments.jsonString,
             callId: toolCall.callId,
-            id: "fc_" + toolCall.id,
+            id: toolCall.id,
             name: toolCall.toolName,
             status: transcriptStatusToFunctionCallStatus(toolCall.status)
           )
@@ -514,8 +515,8 @@ public final class OpenAIAdapter: AgentAdapter {
         }()
 
         let item = Item.FunctionCallOutput(
-          id: "fc_" + toolOutput.id,
-          status: nil,
+          id: toolOutput.id,
+          status: transcriptStatusToFunctionCallStatus(toolOutput.status),
           callId: toolOutput.callId,
           output: output
         )

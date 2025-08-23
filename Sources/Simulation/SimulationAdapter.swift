@@ -149,6 +149,7 @@ public struct SimulationAdapter {
         callId: callId,
         toolName: toolMock.tool.name,
         segment: .structure(AgentTranscript.StructuredSegment(content: output)),
+        status: .completed,
       )
 
       let transcriptEntry = Transcript<Context>.Entry.toolOutput(toolOutputEntry)
