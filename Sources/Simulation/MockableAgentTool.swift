@@ -4,6 +4,8 @@ import Foundation
 import FoundationModels
 import SwiftAgent
 
+// Important to mention in documentation that the arguments must be encodable so that they can be turned into json for the simulator!
+
 public protocol MockableAgentTool<Tool>: Sendable where Tool.Arguments: Encodable {
   associatedtype Tool: AgentTool
   
