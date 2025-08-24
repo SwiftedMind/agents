@@ -56,6 +56,17 @@ import Internal
 /// }
 /// ```
 ///
+/// ## Token Usage Tracking
+///
+/// Monitor cumulative token usage across all responses in the session:
+///
+/// ```swift
+/// // After multiple responses
+/// print("Total tokens used: \(session.sessionTokenUsage.totalTokens ?? 0)")
+/// print("Total input tokens: \(session.sessionTokenUsage.inputTokens ?? 0)")
+/// print("Total output tokens: \(session.sessionTokenUsage.outputTokens ?? 0)")
+/// ```
+///
 /// - Note: ModelSession is `@MainActor` isolated and `@Observable` for SwiftUI integration.
 @Observable @MainActor
 public final class ModelSession<Adapter: AgentAdapter, Context: PromptContextSource> {
@@ -76,6 +87,13 @@ public final class ModelSession<Adapter: AgentAdapter, Context: PromptContextSou
   /// The transcript maintains the complete history of interactions and can be used
   /// to access previous responses, analyze tool usage, or continue conversations.
   public var transcript: Transcript
+
+  /// Cumulative token usage across all responses in this session.
+  ///
+  /// This property tracks the total token consumption for the entire session,
+  /// aggregating usage from all responses. It's updated automatically after
+  /// each generation and can be observed for real-time usage monitoring.
+  public var tokenUsage = TokenUsage()
 
   /// Provider for fetching URL metadata for link previews in prompts.
   private let metadataProvider = URLMetadataProvider()
@@ -145,6 +163,9 @@ public final class ModelSession<Adapter: AgentAdapter, Context: PromptContextSou
           }
         }
       case let .tokenUsage(usage):
+        // Update session token usage immediately for real-time tracking
+        tokenUsage.merge(usage)
+
         if var current = aggregatedUsage {
           current.merge(usage)
           aggregatedUsage = current
@@ -212,6 +233,7 @@ public final class ModelSession<Adapter: AgentAdapter, Context: PromptContextSou
             case let .structure(structuredSegment):
               // We can return here since a structured response can only happen once
               // TODO: Handle errors here in some way
+
               return try AgentResponse<Adapter, Context, Content>(
                 content: Content(structuredSegment.content),
                 addedEntries: addedEntities,
@@ -221,6 +243,9 @@ public final class ModelSession<Adapter: AgentAdapter, Context: PromptContextSou
           }
         }
       case let .tokenUsage(usage):
+        // Update session token usage immediately for real-time tracking
+        tokenUsage.merge(usage)
+
         if var current = aggregatedUsage {
           current.merge(usage)
           aggregatedUsage = current
