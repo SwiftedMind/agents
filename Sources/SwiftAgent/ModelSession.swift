@@ -637,6 +637,35 @@ public extension ModelSession {
   }
 }
 
+// MARK: - Session Management Methods
+
+public extension ModelSession {
+  /// Clears the entire conversation transcript.
+  ///
+  /// This method removes all entries from the transcript, including prompts, responses,
+  /// tool calls, and tool outputs. This is useful for starting a fresh conversation
+  /// while retaining the same ModelSession instance with its configuration and tools.
+  ///
+  /// - Note: This method does not affect token usage tracking. Use `resetTokenUsage()`
+  ///   if you also want to reset the cumulative token counter.
+  func clearTranscript() {
+    transcript = Transcript()
+  }
+
+  /// Resets the cumulative token usage counter to zero.
+  ///
+  /// This method resets all token usage statistics for the session, including
+  /// total tokens, input tokens, output tokens, cached tokens, and reasoning tokens.
+  /// This is useful when you want to track token usage for a specific period
+  /// or after clearing the transcript.
+  ///
+  /// - Note: This method only affects the session's cumulative token tracking.
+  ///   Individual response token usage is not affected.
+  func resetTokenUsage() {
+    tokenUsage = TokenUsage()
+  }
+}
+
 // MARK: - AgentResponse
 
 /// The response returned by ModelSession methods, containing generated content and metadata.

@@ -4,6 +4,20 @@
 
 ### Added
 
+- **Session Management Methods**: Added `clearTranscript()` and `resetTokenUsage()` methods to ModelSession for better session lifecycle management.
+
+  ```swift
+  // Clear the conversation transcript while keeping the session configuration
+  session.clearTranscript()
+  
+  // Reset cumulative token usage counter
+  session.resetTokenUsage()
+  
+  // Both methods can be used independently or together
+  session.clearTranscript()
+  session.resetTokenUsage()
+  ```
+
 - **Token Usage Tracking and Reporting**: Added comprehensive token usage monitoring across all AI interactions with both per-response and session-level tracking.
 
   ```swift
