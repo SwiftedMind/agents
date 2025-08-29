@@ -103,7 +103,7 @@ SwiftAgent is a Swift Package that provides:
 xcodebuild__build_sim_name_ws({
   workspacePath: "{working_directory}/SwiftAgent.xcworkspace",
   scheme: "SwiftAgent",
-  simulatorName: "iPhone 16"
+  simulatorName: "iPhone 16 Pro"
 })
 ```
 
@@ -115,7 +115,7 @@ xcodebuild__build_sim_name_ws({
 xcodebuild__build_sim_name_ws({
   workspacePath: "{working_directory}/SwiftAgent.xcworkspace",
   scheme: "ExampleApp",
-  simulatorName: "iPhone 16"
+  simulatorName: "iPhone 16 Pro"
 })
 ```
 
@@ -127,7 +127,7 @@ xcodebuild__build_sim_name_ws({
 xcodebuild__test_sim_name_ws({
   workspacePath: "{working_directory}/SwiftAgent.xcworkspace",
   scheme: "SwiftAgentTests",
-  simulatorName: "iPhone 16",
+  simulatorName: "iPhone 16 Pro",
   useLatestOS: true,
   extraArgs: ["-testPlan", "SwiftAgentTests"]
 })
