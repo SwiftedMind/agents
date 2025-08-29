@@ -238,13 +238,21 @@ public struct PromptTag: PromptRepresentable, Sendable {
     self.content = try content()
   }
 
-  public init(_ name: String, attributes: [String: String] = [:], items: [some PromptRepresentable]) {
+  public init(_ name: String, attributes: [String: String] = [:], content: [some PromptRepresentable]) {
     self.name = name
     self.attributes = attributes
-    content = Prompt {
-      for item in items {
+    self.content = Prompt {
+      for item in content {
         item
       }
+    }
+  }
+
+  public init(_ name: String, attributes: [String: String] = [:], content: some PromptRepresentable) {
+    self.name = name
+    self.attributes = attributes
+    self.content = Prompt {
+      content
     }
   }
 
