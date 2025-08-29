@@ -1,5 +1,23 @@
 # Changelog
 
+## [Upcoming]
+
+### Added
+
+- **PromptTag Single Content Initializer**: Added convenience initializer for `PromptTag` that accepts a single `PromptRepresentable` content parameter, improving API ergonomics for simple use cases.
+
+  ```swift
+  // Before: required wrapping single content in array
+  PromptTag("system", content: [instructions])
+  
+  // Now: direct single content support
+  PromptTag("system", content: instructions)
+  ```
+
+### Enhanced
+
+- **Code Cleanup**: Removed unused `Array<PromptContextLinkPreview>` extension that was adding unnecessary complexity to the prompt context API surface.
+
 ## [0.6.0]
 
 ### Added
