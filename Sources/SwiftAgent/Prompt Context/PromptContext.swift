@@ -82,60 +82,60 @@ import Foundation
 /// Both are made available to your prompt building closures, allowing you to create
 /// sophisticated context-aware prompts that combine application data with web content.
 public struct PromptContext<Source>: Sendable, Equatable where Source: PromptContextSource {
-  /// Creates a new prompt context with the specified sources and link previews.
-  ///
-  /// This initializer is typically called automatically by ``ModelSession`` when you use
-  /// context-aware response methods, combining your provided context sources with any
-  /// link previews extracted from the user's input.
-  ///
-  /// - Parameter sources: An array of custom context sources that implement ``PromptContextSource``
-  /// - Parameter linkPreviews: An array of ``PromptContextLinkPreview`` objects containing
-  ///   metadata for URLs found in the user's input
-  public init(sources: [Source], linkPreviews: [PromptContextLinkPreview]) {
-    self.sources = sources
-    self.linkPreviews = linkPreviews
-  }
+	/// Creates a new prompt context with the specified sources and link previews.
+	///
+	/// This initializer is typically called automatically by ``ModelSession`` when you use
+	/// context-aware response methods, combining your provided context sources with any
+	/// link previews extracted from the user's input.
+	///
+	/// - Parameter sources: An array of custom context sources that implement ``PromptContextSource``
+	/// - Parameter linkPreviews: An array of ``PromptContextLinkPreview`` objects containing
+	///   metadata for URLs found in the user's input
+	public init(sources: [Source], linkPreviews: [PromptContextLinkPreview]) {
+		self.sources = sources
+		self.linkPreviews = linkPreviews
+	}
 
-  /// A context with no sources or link previews.
-  ///
-  /// This property provides a convenient way to create an empty context when no contextual
-  /// data is available. It's equivalent to calling `PromptContext(sources: [], linkPreviews: [])`.
-  ///
-  /// ## Usage
-  ///
-  /// ```swift
-  /// let emptyContext = PromptContext<MyContextSource>.empty
-  /// // equivalent to: PromptContext<MyContextSource>(sources: [], linkPreviews: [])
-  /// ```
-  public static var empty: Self {
-    Self(sources: [], linkPreviews: [])
-  }
+	/// A context with no sources or link previews.
+	///
+	/// This property provides a convenient way to create an empty context when no contextual
+	/// data is available. It's equivalent to calling `PromptContext(sources: [], linkPreviews: [])`.
+	///
+	/// ## Usage
+	///
+	/// ```swift
+	/// let emptyContext = PromptContext<MyContextSource>.empty
+	/// // equivalent to: PromptContext<MyContextSource>(sources: [], linkPreviews: [])
+	/// ```
+	public static var empty: Self {
+		Self(sources: [], linkPreviews: [])
+	}
 
-  /// The custom context sources provided for this interaction.
-  ///
-  /// This array contains your application-specific context data that implements
-  /// ``PromptContextSource``. Sources might include user data, document content,
-  /// search results, or any other contextual information relevant to the AI interaction.
-  ///
-  /// The sources are made available to your prompt building closures, allowing you to
-  /// dynamically include relevant context in your prompts based on the specific
-  /// sources provided for each interaction.
-  public var sources: [Source] = []
+	/// The custom context sources provided for this interaction.
+	///
+	/// This array contains your application-specific context data that implements
+	/// ``PromptContextSource``. Sources might include user data, document content,
+	/// search results, or any other contextual information relevant to the AI interaction.
+	///
+	/// The sources are made available to your prompt building closures, allowing you to
+	/// dynamically include relevant context in your prompts based on the specific
+	/// sources provided for each interaction.
+	public var sources: [Source] = []
 
-  /// Automatically extracted link preview metadata from URLs in user input.
-  ///
-  /// This array contains ``PromptContextLinkPreview`` objects that represent metadata
-  /// extracted from any URLs found in the user's input message. The extraction happens
-  /// automatically in ``ModelSession`` before your prompt building closure is called.
-  ///
-  /// Link previews include information such as:
-  /// - Original and final URLs (after redirect resolution)
-  /// - Extracted page titles
-  /// - Structured XML representation for inclusion in prompts
-  ///
-  /// When included in prompts, link previews provide the AI with rich context about
-  /// referenced web content without requiring manual URL processing.
-  public var linkPreviews: [PromptContextLinkPreview] = []
+	/// Automatically extracted link preview metadata from URLs in user input.
+	///
+	/// This array contains ``PromptContextLinkPreview`` objects that represent metadata
+	/// extracted from any URLs found in the user's input message. The extraction happens
+	/// automatically in ``ModelSession`` before your prompt building closure is called.
+	///
+	/// Link previews include information such as:
+	/// - Original and final URLs (after redirect resolution)
+	/// - Extracted page titles
+	/// - Structured XML representation for inclusion in prompts
+	///
+	/// When included in prompts, link previews provide the AI with rich context about
+	/// referenced web content without requiring manual URL processing.
+	public var linkPreviews: [PromptContextLinkPreview] = []
 }
 
 /// A protocol for types that can serve as context sources in AI prompts.

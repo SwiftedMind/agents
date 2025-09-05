@@ -18,7 +18,7 @@ public struct OpenAIConfiguration: AdapterConfiguration {
 	public static func direct(
 		apiKey: String,
 		baseURL: URL = URL(string: "https://api.openai.com")!,
-		responsesPath: String = "/v1/responses"
+		responsesPath: String = "/v1/responses",
 	) -> OpenAIConfiguration {
 		let encoder = JSONEncoder()
 
@@ -35,7 +35,7 @@ public struct OpenAIConfiguration: AdapterConfiguration {
 			onUnauthorized: { _, _, _ in
 				// Let the caller decide how to refresh; default is not to retry
 				false
-			}
+			},
 		)
 
 		let config = HTTPClientConfiguration(
@@ -44,7 +44,7 @@ public struct OpenAIConfiguration: AdapterConfiguration {
 			timeout: 60,
 			jsonEncoder: encoder,
 			jsonDecoder: decoder,
-			interceptors: interceptors
+			interceptors: interceptors,
 		)
 
 		return OpenAIConfiguration(httpClient: URLSessionHTTPClient(configuration: config), responsesPath: responsesPath)
@@ -60,14 +60,13 @@ public struct OpenAIConfiguration: AdapterConfiguration {
 	/// and otherwise mirrors the standard HTTP client configuration used by the SDK.
 	/// - Parameters:
 	///   - bearerToken: The raw bearer token to include in the `Authorization` header.
-	///   - baseURL: The proxy backend `URL`. There is no sensible default; this must be
-	///              your proxy backend URL.
+	///   - baseURL: The proxy backend `URL`.
 	///   - responsesPath: The HTTP path used for responses. Defaults to `/v1/responses`.
 	/// - Returns: A configured `OpenAIConfiguration` instance.
 	public static func direct(
 		bearerToken: String,
 		baseURL: URL,
-		responsesPath: String = "/v1/responses"
+		responsesPath: String = "/v1/responses",
 	) -> OpenAIConfiguration {
 		let encoder = JSONEncoder()
 
@@ -84,7 +83,7 @@ public struct OpenAIConfiguration: AdapterConfiguration {
 			onUnauthorized: { _, _, _ in
 				// Let the caller decide how to refresh; default is not to retry
 				false
-			}
+			},
 		)
 
 		let config = HTTPClientConfiguration(
@@ -93,7 +92,7 @@ public struct OpenAIConfiguration: AdapterConfiguration {
 			timeout: 60,
 			jsonEncoder: encoder,
 			jsonDecoder: decoder,
-			interceptors: interceptors
+			interceptors: interceptors,
 		)
 
 		return OpenAIConfiguration(httpClient: URLSessionHTTPClient(configuration: config), responsesPath: responsesPath)

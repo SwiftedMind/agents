@@ -27,36 +27,36 @@ import Foundation
 /// </link-previews>
 /// ```
 public struct PromptContextLinkPreview: Sendable, Equatable {
-  /// The original URL from user input before any redirects.
-  ///
-  /// This preserves the URL as it appeared in the original user message, which may
-  /// be a shortened URL, redirect link, or the actual destination URL.
-  public var originalURL: URL
+	/// The original URL from user input before any redirects.
+	///
+	/// This preserves the URL as it appeared in the original user message, which may
+	/// be a shortened URL, redirect link, or the actual destination URL.
+	public var originalURL: URL
 
-  /// The final URL after following redirects.
-  ///
-  /// This contains the ultimate destination URL after the framework has resolved
-  /// any redirects. In cases where no redirects occur, this will be identical
-  /// to ``originalURL``.
-  public var url: URL
+	/// The final URL after following redirects.
+	///
+	/// This contains the ultimate destination URL after the framework has resolved
+	/// any redirects. In cases where no redirects occur, this will be identical
+	/// to ``originalURL``.
+	public var url: URL
 
-  /// The title of the linked content.
-  ///
-  /// This optional property contains the extracted title from the linked webpage's
-  /// metadata (typically from the HTML `<title>` tag or Open Graph `og:title`).
-  /// May be `nil` if the title could not be extracted or the URL is inaccessible.
-  public var title: String?
+	/// The title of the linked content.
+	///
+	/// This optional property contains the extracted title from the linked webpage's
+	/// metadata (typically from the HTML `<title>` tag or Open Graph `og:title`).
+	/// May be `nil` if the title could not be extracted or the URL is inaccessible.
+	public var title: String?
 
-  /// Creates a new link preview with the specified URL information and optional title.
-  ///
-  /// - Parameter originalURL: The URL as it appeared in the original user input
-  /// - Parameter url: The final URL after resolving any redirects
-  /// - Parameter title: The extracted title of the linked content, if available
-  public init(originalURL: URL, url: URL, title: String? = nil) {
-    self.originalURL = originalURL
-    self.url = url
-    self.title = title
-  }
+	/// Creates a new link preview with the specified URL information and optional title.
+	///
+	/// - Parameter originalURL: The URL as it appeared in the original user input
+	/// - Parameter url: The final URL after resolving any redirects
+	/// - Parameter title: The extracted title of the linked content, if available
+	public init(originalURL: URL, url: URL, title: String? = nil) {
+		self.originalURL = originalURL
+		self.url = url
+		self.title = title
+	}
 }
 
 /// Conformance to `PromptRepresentable` for individual link previews.
@@ -87,29 +87,29 @@ public struct PromptContextLinkPreview: Sendable, Equatable {
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
 extension PromptContextLinkPreview: PromptRepresentable {
-  /// Converts the link preview into a structured prompt representation.
-  ///
-  /// Creates a `<link-preview>` tag with attributes for the URL information and title.
-  /// The `original_url` attribute is only included when the original URL differs from
-  /// the final URL due to redirects. The `title` attribute is only included when
-  /// title metadata is available.
-  ///
-  /// - Returns: A ``Prompt`` containing a single `<link-preview>` tag with appropriate attributes.
-  public var promptRepresentation: Prompt {
-    var attributes: [String: String] = [
-      "url": url.absoluteString,
-    ]
+	/// Converts the link preview into a structured prompt representation.
+	///
+	/// Creates a `<link-preview>` tag with attributes for the URL information and title.
+	/// The `original_url` attribute is only included when the original URL differs from
+	/// the final URL due to redirects. The `title` attribute is only included when
+	/// title metadata is available.
+	///
+	/// - Returns: A ``Prompt`` containing a single `<link-preview>` tag with appropriate attributes.
+	public var promptRepresentation: Prompt {
+		var attributes: [String: String] = [
+			"url": url.absoluteString,
+		]
 
-    if originalURL != url {
-      attributes["original_url"] = originalURL.absoluteString
-    }
+		if originalURL != url {
+			attributes["original_url"] = originalURL.absoluteString
+		}
 
-    if let title = title {
-      attributes["title"] = title
-    }
+		if let title {
+			attributes["title"] = title
+		}
 
-    return Prompt {
-      PromptTag("link-preview", attributes: attributes)
-    }
-  }
+		return Prompt {
+			PromptTag("link-preview", attributes: attributes)
+		}
+	}
 }
