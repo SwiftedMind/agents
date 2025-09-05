@@ -14,6 +14,16 @@
   PromptTag("system", content: instructions)
   ```
 
+- **OpenAI Bearer‑Token Proxy Configuration**: Added `OpenAIConfiguration.direct(bearerToken:baseURL:responsesPath:)` for use with proxy backends that issue short‑lived, per‑"agent turn" access tokens. This factory requires an explicit `baseURL` (no default) and is not intended for direct calls to OpenAI endpoints.
+
+  ```swift
+  // Create a configuration targeting your proxy backend
+  let config = OpenAIConfiguration.direct(
+    bearerToken: token, // short‑lived "agent turn" token from your proxy
+    baseURL: URL(string: "https://your-proxy.example.com")!
+  )
+  ```
+
 ### Enhanced
 
 - **Code Cleanup**: Removed unused `Array<PromptContextLinkPreview>` extension that was adding unnecessary complexity to the prompt context API surface.
