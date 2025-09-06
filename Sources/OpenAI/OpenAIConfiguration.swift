@@ -103,7 +103,7 @@ public struct OpenAIConfiguration: AdapterConfiguration {
 				await request.setValue("Bearer \(context.bearerToken)", forHTTPHeaderField: "Authorization")
 			},
 			onUnauthorized: { _, _, _ in
-				guard var context = AuthorizationContext.current, let refreshToken = await context.refreshToken else {
+				guard let context = AuthorizationContext.current, let refreshToken = await context.refreshToken else {
 					return false
 				}
 				guard let newToken = try? await refreshToken() else {
