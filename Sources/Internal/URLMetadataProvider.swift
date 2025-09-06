@@ -22,12 +22,11 @@ package final class URLMetadataProvider {
 		}
 	}
 
-	private let provider = LPMetadataProvider()
-
 	package init() {}
 
 	/// Fetches metadata for a single URL
 	package func fetchMetadata(for url: URL) async throws -> URLMetadata {
+		let provider = LPMetadataProvider()
 		let metadata = try await provider.startFetchingMetadata(for: url)
 		return URLMetadata(
 			originalURL: url,
