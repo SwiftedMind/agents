@@ -14,14 +14,29 @@
   PromptTag("system", content: instructions)
   ```
 
-- **OpenAI Bearer‑Token Proxy Configuration**: Added `OpenAIConfiguration.direct(bearerToken:baseURL:responsesPath:)` for use with proxy backends that issue short‑lived, per‑"agent turn" access tokens. This factory requires an explicit `baseURL` (no default) and is not intended for direct calls to OpenAI endpoints.
+- **Secure Proxy Configuration + Per‑Turn Authorization**: Added `OpenAIConfiguration.proxy(through:)` to route all requests through your own backend, and `ModelSession.withAuthorization(token:refresh:perform:)` to attach a short‑lived token to every request that happens during a single agent turn (reasoning steps, tool calls, final output). This keeps provider credentials off device and enables safe, rotating tokens.
 
   ```swift
-  // Create a configuration targeting your proxy backend
-  let config = OpenAIConfiguration.direct(
-    bearerToken: token, // short‑lived "agent turn" token from your proxy
-    baseURL: URL(string: "https://your-proxy.example.com")!
-  )
+  // Configure the session to use your proxy backend
+  let configuration = OpenAIConfiguration.proxy(through: URL(string: "https://your-proxy.example.com")!)
+  let session = ModelSession.openAI(tools: tools, instructions: "...", configuration: configuration)
+
+  // Obtain a per‑turn token from your backend
+  let token = try await backend.issueTurnToken(for: userId)
+
+  // Authorize all requests for this turn
+  let response = try await session.withAuthorization(token: token) {
+    try await session.respond(to: "Create a release announcement")
+  }
+
+  // Optional: automatically refresh on 401 and retry once
+  let initial = try await backend.issueTurnToken(for: userId)
+  let refreshed = try await session.withAuthorization(
+    token: initial,
+    refresh: { try await backend.refreshTurnToken(for: userId) }
+  ) {
+    try await session.respond(to: "Draft a follow‑up email")
+  }
   ```
 
 ### Enhanced

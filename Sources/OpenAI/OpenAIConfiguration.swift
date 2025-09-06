@@ -14,11 +14,13 @@ public struct OpenAIConfiguration: AdapterConfiguration {
 	}
 
 	/// Convenience builder for calling OpenAI directly with an API key.
-	/// Users can alternatively point `baseURL` to their own backend and omit the apiKey.
+	///
+	/// This is intended for prototyping only. Shipping an API key inside an app binary is
+	/// insecure and should be avoided in production. Prefer ``proxy(through:)`` with
+	/// short‑lived, backend‑issued tokens that are scoped to a single agent turn.
 	public static func direct(
 		apiKey: String,
 		baseURL: URL = URL(string: "https://api.openai.com")!,
-		responsesPath: String = "/v1/responses",
 	) -> OpenAIConfiguration {
 		let encoder = JSONEncoder()
 
@@ -47,52 +49,43 @@ public struct OpenAIConfiguration: AdapterConfiguration {
 			interceptors: interceptors,
 		)
 
-		return OpenAIConfiguration(httpClient: URLSessionHTTPClient(configuration: config), responsesPath: responsesPath)
+		return OpenAIConfiguration(httpClient: URLSessionHTTPClient(configuration: config))
 	}
 
-	/// Convenience builder for calling a proxy backend using a session‑scoped bearer token.
+	/// Configures the adapter to send all requests through your own proxy backend.
 	///
-	/// This is intentionally NOT meant for calling OpenAI endpoints directly. Use this when your
-	/// proxy backend provides a bearer token that remains valid for the entire `ModelSession` lifetime,
-	/// and expects `Authorization: Bearer <token>` on requests.
+	/// The proxy approach is the recommended, secure way to use the SDK in apps. Your backend
+	/// issues a short‑lived token (for example, for a single agent turn) and the app attaches it
+	/// to requests. This way, api keys never ship in the app bundle and communication with the backend stays secure.
 	///
-	/// If your token needs to change for each agent turn or response, prefer the
-	/// ``direct(bearerToken:baseURL:responsesPath:)-(()->String,_,_)`` overload below so the freshest token is applied to every request.
+	/// This configuration reads the token from the internal task‑local authorization context that
+	/// you set via ``ModelSession/withAuthorization(token:refresh:perform:)``. If the proxy responds
+	/// with `401 Unauthorized` and a refresh closure was provided to `withAuthorization`, the SDK will
+	/// obtain a new token from that closure and retry the request once.
 	///
-	/// - Parameters:
-	///   - bearerToken: The raw bearer token to include in the `Authorization` header.
-	///   - baseURL: The proxy backend `URL`.
-	///   - responsesPath: The HTTP path used for responses. Defaults to `/v1/responses`.
+	/// - Parameter baseURL: The base `URL` of your proxy backend.
 	/// - Returns: A configured `OpenAIConfiguration` instance.
-	public static func direct(
-		bearerToken: String,
-		baseURL: URL,
-		responsesPath: String = "/v1/responses",
-	) -> OpenAIConfiguration {
-		direct(
-			bearerToken: { bearerToken },
-			baseURL: baseURL,
-			responsesPath: responsesPath
-		)
-	}
-
-	/// Convenience builder for calling a proxy backend using a dynamic bearer token provider.
 	///
-	/// Use this when your backend issues short‑lived tokens per agent turn/response, or when
-	/// you otherwise need to resolve the token at request time. The provided `bearerTokenProvider`
-	/// is invoked for each outgoing request so the freshest token is attached. On a 401 response,
-	/// the request is retried once and the provider is invoked again before retrying.
+	/// ## Example: Recommended Proxy + Per‑Turn Token
 	///
-	/// - Parameters:
-	///   - bearerToken: Async closure returning the current bearer token.
-	///   - baseURL: The proxy backend `URL`.
-	///   - responsesPath: The HTTP path used for responses. Defaults to `/v1/responses`.
-	/// - Returns: A configured `OpenAIConfiguration` instance.
-	public static func direct(
-		bearerToken: @escaping @Sendable () async throws -> String,
-		baseURL: URL,
-		responsesPath: String = "/v1/responses",
-	) -> OpenAIConfiguration {
+	/// ```swift
+	/// let configuration = OpenAIConfiguration.proxy(through: URL(string: "https://api.your‑backend.com")!)
+	/// let session = ModelSession.openAI(
+	///   tools: [WeatherTool(), CalculatorTool()],
+	///   instructions: "You are a helpful assistant.",
+	///   configuration: configuration
+	/// )
+	///
+	/// // Obtain a short‑lived token for this agent turn from your backend
+	/// let token = try await backend.issueTurnToken(for: userId)
+	///
+	/// // Run the turn under this authorization context
+	/// let response = try await session.withAuthorization(token: token) {
+	///   try await session.respond(to: "Help me plan a weekend in Berlin.")
+	/// }
+	/// print(response.content)
+	/// ```
+	public static func proxy(through baseURL: URL) -> OpenAIConfiguration {
 		let encoder = JSONEncoder()
 
 		// .sortedKeys is important to enable reliable cache hits!
@@ -103,12 +96,22 @@ public struct OpenAIConfiguration: AdapterConfiguration {
 
 		let interceptors = HTTPClientInterceptors(
 			prepareRequest: { request in
-				let token = try await bearerToken()
-				request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+				guard let context = AuthorizationContext.current else {
+					preconditionFailure("OpenAIConfiguration.proxy(through:) requires an authorization context.")
+				}
+
+				await request.setValue("Bearer \(context.bearerToken)", forHTTPHeaderField: "Authorization")
 			},
 			onUnauthorized: { _, _, _ in
-				// Let the caller decide how to refresh; default is to retry once with a freshly provided token
-				true
+				guard var context = AuthorizationContext.current, let refreshToken = await context.refreshToken else {
+					return false
+				}
+				guard let newToken = try? await refreshToken() else {
+					return false
+				}
+
+				await context.setBearerToken(newToken)
+				return true
 			},
 		)
 
@@ -121,6 +124,6 @@ public struct OpenAIConfiguration: AdapterConfiguration {
 			interceptors: interceptors,
 		)
 
-		return OpenAIConfiguration(httpClient: URLSessionHTTPClient(configuration: config), responsesPath: responsesPath)
+		return OpenAIConfiguration(httpClient: URLSessionHTTPClient(configuration: config))
 	}
 }

@@ -85,6 +85,8 @@ let response = try await session.respond(to: "What's the weather like in San Fra
 print(response.content)
 ```
 
+> Note: Using an API key directly is great for prototyping, but do not ship it in production apps. For shipping apps, use a secure proxy with per‑turn tokens. See Proxy Setup in [OpenAI Configuration](#openai-configuration).
+
 #### Alternative Configuration Methods
 
 ```swift
@@ -346,6 +348,32 @@ The simulation system provides:
 - **Structured output support** - any `@Generable` struct used with `simulateResponse(generating:)` must conform to `MockableGenerable` for mock generation
 
 ## 🔧 Configuration
+
+### OpenAI Configuration
+
+- Recommended: `OpenAIConfiguration.proxy(through:)` — route all requests through your own backend. Your backend issues short‑lived, per‑turn tokens. Use `ModelSession.withAuthorization` to set the token for the current agent turn so every internal request (thinking steps, tool calls, final message) is authorized consistently.
+- Prototyping only: `OpenAIConfiguration.direct(apiKey:)` — calls OpenAI directly and embeds an API key in the app bundle. Avoid this in production.
+
+```swift
+// Proxy configuration (recommended)
+let configuration = OpenAIConfiguration.proxy(through: URL(string: "https://api.your-backend.com")!)
+let session = ModelSession.openAI(tools: tools, instructions: "...", configuration: configuration)
+
+// Per‑turn authorization
+let token = try await backend.issueTurnToken(for: userId)
+let response = try await session.withAuthorization(token: token) {
+  try await session.respond(to: "Summarize yesterday's sales numbers.")
+}
+
+// Optional: automatic token refresh on 401
+let initial = try await backend.issueTurnToken(for: userId)
+let refreshed = try await session.withAuthorization(
+  token: initial,
+  refresh: { try await backend.refreshTurnToken(for: userId) }
+) {
+  try await session.respond(to: "Plan a team offsite agenda.")
+}
+```
 
 ### Logging
 
