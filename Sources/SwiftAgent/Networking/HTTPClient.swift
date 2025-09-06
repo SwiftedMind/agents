@@ -28,12 +28,12 @@ public enum HTTPMethod: String, Sendable {
 /// Interceptors to customize request/response handling.
 public struct HTTPClientInterceptors: Sendable {
 	/// Allows adding auth headers or other customizations before the request is sent.
-	public var prepareRequest: (@Sendable (inout URLRequest) async -> Void)?
+	public var prepareRequest: (@Sendable (inout URLRequest) async throws -> Void)?
 	/// Called on 401 responses. Return true to indicate the request should be retried once (e.g. after refreshing auth).
 	public var onUnauthorized: (@Sendable (_ response: HTTPURLResponse, _ data: Data?, _ originalRequest: URLRequest) async -> Bool)?
 
 	public init(
-		prepareRequest: (@Sendable (inout URLRequest) async -> Void)? = nil,
+		prepareRequest: (@Sendable (inout URLRequest) async throws -> Void)? = nil,
 		onUnauthorized: (@Sendable (_ response: HTTPURLResponse, _ data: Data?, _ originalRequest: URLRequest) async -> Bool)? = nil,
 	) {
 		self.prepareRequest = prepareRequest
@@ -144,7 +144,11 @@ public final class URLSessionHTTPClient: HTTPClient {
 
 		// Allow caller to inject auth headers etc.
 		if let prepare = configuration.interceptors.prepareRequest {
-			await prepare(&request)
+			do {
+				try await prepare(&request)
+			} catch {
+				throw HTTPError.requestFailed(underlying: error)
+			}
 		}
 
 		// Log the outgoing request
@@ -164,7 +168,11 @@ public final class URLSessionHTTPClient: HTTPClient {
 					var retryRequest = request
 					// Allow re-preparing the request (e.g. with refreshed token)
 					if let prepare = configuration.interceptors.prepareRequest {
-						await prepare(&retryRequest)
+						do {
+							try await prepare(&retryRequest)
+						} catch {
+							throw HTTPError.requestFailed(underlying: error)
+						}
 					}
 
 					// Log the retry request

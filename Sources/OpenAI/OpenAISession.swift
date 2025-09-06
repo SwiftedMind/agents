@@ -72,6 +72,58 @@ public extension ModelSession {
 		return OpenAISession(adapter: adapter)
 	}
 
+    /// Creates an OpenAI-powered ModelSession without context using a dynamic bearer token provider.
+    ///
+    /// Use this when connecting to a proxy backend that issues short‑lived tokens per agent
+    /// turn/response, or when you otherwise need to resolve the token at request time. The
+    /// `bearerTokenProvider` is invoked for every request and on a single 401 retry.
+	///
+	/// - Parameters:
+	///   - tools: Tools available to the agent.
+	///   - instructions: System instructions describing the agent behavior.
+	///   - baseURL: Proxy backend base `URL`.
+	///   - responsesPath: Response path on the backend. Defaults to `/v1/responses`.
+	///   - bearerTokenProvider: Async closure returning the current bearer token.
+	/// - Returns: A configured ``OpenAISession``.
+    @MainActor static func openAI(
+        tools: [any AgentTool] = [],
+        instructions: String = "",
+        baseURL: URL,
+        responsesPath: String = "/v1/responses",
+        bearerTokenProvider: @escaping @Sendable () async throws -> String
+    ) -> OpenAISession where Adapter == OpenAIAdapter, Context == NoContext {
+        let configuration = OpenAIConfiguration.direct(
+            bearerTokenProvider: bearerTokenProvider,
+            baseURL: baseURL,
+            responsesPath: responsesPath
+        )
+        let adapter = OpenAIAdapter(tools: tools, instructions: instructions, configuration: configuration)
+        return OpenAISession(adapter: adapter)
+    }
+
+    /// Creates an OpenAI-powered ModelSession without context using a fixed bearer token.
+    ///
+    /// Use this when your proxy backend provides a token that remains valid for the entire
+    /// session lifetime. If your token changes per agent turn/response, prefer the
+    /// `bearerTokenProvider` variant.
+	///
+	/// - Parameters are the same as the provider overload, except `bearerToken` is fixed.
+	@MainActor static func openAI(
+		tools: [any AgentTool] = [],
+		instructions: String = "",
+		baseURL: URL,
+		responsesPath: String = "/v1/responses",
+		bearerToken: String
+	) -> OpenAISession where Adapter == OpenAIAdapter, Context == NoContext {
+		let configuration = OpenAIConfiguration.direct(
+			bearerToken: bearerToken,
+			baseURL: baseURL,
+			responsesPath: responsesPath
+		)
+		let adapter = OpenAIAdapter(tools: tools, instructions: instructions, configuration: configuration)
+		return OpenAISession(adapter: adapter)
+	}
+
 	/// Creates a simple OpenAI-powered ModelSession without context using a custom configuration.
 	///
 	/// This method allows you to create an OpenAI session with advanced configuration options,
@@ -176,6 +228,58 @@ public extension ModelSession {
 		apiKey: String,
 	) -> OpenAIContextualSession<Context> where Adapter == OpenAIAdapter {
 		let configuration = OpenAIConfiguration.direct(apiKey: apiKey)
+		let adapter = OpenAIAdapter(tools: tools, instructions: instructions, configuration: configuration)
+		return OpenAIContextualSession(adapter: adapter)
+	}
+
+    /// Creates a contextual OpenAI-powered ModelSession using a dynamic bearer token provider.
+    ///
+    /// Use this when your proxy backend issues short‑lived tokens per agent turn/response, or
+    /// when token resolution must happen at request time. The provider runs for each request and
+    /// again on a single 401 retry.
+	///
+	/// - Parameters:
+	///   - tools: Tools available to the agent.
+	///   - instructions: System instructions describing the agent behavior.
+	///   - context: The context type to inject into prompts.
+	///   - baseURL: Proxy backend base `URL`.
+	///   - responsesPath: Response path on the backend. Defaults to `/v1/responses`.
+	///   - bearerTokenProvider: Async closure returning the current bearer token.
+	/// - Returns: A configured ``OpenAIContextualSession``.
+    @MainActor static func openAI(
+        tools: [any AgentTool] = [],
+        instructions: String = "",
+        context: Context.Type,
+        baseURL: URL,
+        responsesPath: String = "/v1/responses",
+        bearerTokenProvider: @escaping @Sendable () async throws -> String
+    ) -> OpenAIContextualSession<Context> where Adapter == OpenAIAdapter {
+        let configuration = OpenAIConfiguration.direct(
+            bearerTokenProvider: bearerTokenProvider,
+            baseURL: baseURL,
+            responsesPath: responsesPath
+        )
+        let adapter = OpenAIAdapter(tools: tools, instructions: instructions, configuration: configuration)
+        return OpenAIContextualSession(adapter: adapter)
+    }
+
+    /// Creates a contextual OpenAI-powered ModelSession using a fixed bearer token.
+    ///
+    /// Use this when your token remains valid for the entire session lifetime. If your token
+    /// changes per agent turn/response, prefer the `bearerTokenProvider` variant.
+	@MainActor static func openAI(
+		tools: [any AgentTool] = [],
+		instructions: String = "",
+		context: Context.Type,
+		baseURL: URL,
+		responsesPath: String = "/v1/responses",
+		bearerToken: String
+	) -> OpenAIContextualSession<Context> where Adapter == OpenAIAdapter {
+		let configuration = OpenAIConfiguration.direct(
+			bearerToken: bearerToken,
+			baseURL: baseURL,
+			responsesPath: responsesPath
+		)
 		let adapter = OpenAIAdapter(tools: tools, instructions: instructions, configuration: configuration)
 		return OpenAIContextualSession(adapter: adapter)
 	}
