@@ -57,7 +57,7 @@
 --never-trailing 
 --nil-init remove
 --no-space-operators 
---wrap-operators 
+--no-wrap-operators 
 --non-complex-attributes 
 --octal-grouping 4,8
 --operator-func spaced
@@ -97,13 +97,13 @@
 --visibility-marks 
 --visibility-order 
 --void-type void
---wrap-arguments before-first
---wrap-collections before-first
---wrap-conditions before-first
---wrap-effects before-first
+--wrap-arguments preserve
+--wrap-collections preserve
+--wrap-conditions preserve
+--wrap-effects preserve
 --wrap-enum-cases always
---wrap-parameters before-first
---wrap-return-type before-first
+--wrap-parameters default
+--wrap-return-type preserve
 --wrap-string-interpolation default
 --wrap-ternary default
 --wrap-type-aliases preserve
