@@ -212,14 +212,56 @@ public final class OpenAIAdapter: AgentAdapter {
 		generatedTranscript: inout Transcript<Context>,
 		continuation: AsyncThrowingStream<AgentUpdate<Context>, any Error>.Continuation,
 	) async throws where Context: PromptContextSource {
+		let expectedTypeName = String(describing: String.self)
+		let status: Transcript<Context>.Status = transcriptStatusFromOpenAIStatus(message.status)
+
+		var textFragments: [String] = []
+		var refusalMessage: String?
+
+		for content in message.content {
+			switch content.extractedTextSegment {
+			case let .text(text):
+				textFragments.append(text)
+			case let .refusal(reason):
+				refusalMessage = reason
+			case .none:
+				break
+			}
+		}
+
+		if let refusalMessage {
+			let refusalSegments = [Transcript<Context>.Segment.text(Transcript.TextSegment(content: refusalMessage))]
+			let refusalResponse = Transcript<Context>.Response(
+				id: message.id,
+				segments: refusalSegments,
+				status: status,
+			)
+
+			AgentLog.outputMessage(text: refusalMessage, status: String(describing: message.status))
+
+			generatedTranscript.append(.response(refusalResponse))
+			continuation.yield(.transcript(.response(refusalResponse)))
+
+			let errorContext = AgentGenerationError.ContentRefusalContext(expectedType: expectedTypeName, reason: refusalMessage)
+			throw AgentGenerationError.contentRefusal(errorContext)
+		}
+
+		guard !textFragments.isEmpty else {
+			let errorContext = AgentGenerationError.EmptyMessageContentContext(expectedType: expectedTypeName)
+			throw AgentGenerationError.emptyMessageContent(errorContext)
+		}
+
+		let responseSegments = textFragments.map { fragment in
+			Transcript<Context>.Segment.text(Transcript.TextSegment(content: fragment))
+		}
 		let response = Transcript<Context>.Response(
 			id: message.id,
-			segments: message.content.compactMap(\.asText).map { .text(Transcript.TextSegment(content: $0)) },
-			status: transcriptStatusFromOpenAIStatus(message.status),
+			segments: responseSegments,
+			status: status,
 		)
 
-		let text = message.content.compactMap(\.asText).joined(separator: "\n")
-		AgentLog.outputMessage(text: text, status: String(describing: message.status))
+		let joinedText = textFragments.joined(separator: "\n")
+		AgentLog.outputMessage(text: joinedText, status: String(describing: message.status))
 
 		generatedTranscript.append(.response(response))
 		continuation.yield(.transcript(.response(response)))
@@ -231,38 +273,63 @@ public final class OpenAIAdapter: AgentAdapter {
 		generatedTranscript: inout Transcript<Context>,
 		continuation: AsyncThrowingStream<AgentUpdate<Context>, any Error>.Continuation,
 	) async throws where Context: PromptContextSource {
-		// TODO: Can the content have more than one elements? How would we handle that?
-		guard let content = message.content.first else {
-			let errorContext = AgentGenerationError.EmptyMessageContentContext(expectedType: String(describing: type))
+		let expectedTypeName = String(describing: type)
+		let status: Transcript<Context>.Status = transcriptStatusFromOpenAIStatus(message.status)
+
+		var aggregatedFragments: [String] = []
+		var refusalMessage: String?
+
+		for content in message.content {
+			switch content {
+			case let .OutputTextContent(textContent):
+				aggregatedFragments.append(textContent.text)
+			case let .RefusalContent(refusal):
+				refusalMessage = refusal.refusal
+			}
+		}
+
+		if let refusalMessage {
+			let refusalResponse = Transcript<Context>.Response(
+				id: message.id,
+				segments: [.text(Transcript.TextSegment(content: refusalMessage))],
+				status: status,
+			)
+
+			AgentLog.outputMessage(text: refusalMessage, status: String(describing: message.status))
+
+			generatedTranscript.append(.response(refusalResponse))
+			continuation.yield(.transcript(.response(refusalResponse)))
+
+			let errorContext = AgentGenerationError.ContentRefusalContext(expectedType: expectedTypeName, reason: refusalMessage)
+			throw AgentGenerationError.contentRefusal(errorContext)
+		}
+
+		guard !aggregatedFragments.isEmpty else {
+			let errorContext = AgentGenerationError.EmptyMessageContentContext(expectedType: expectedTypeName)
 			throw AgentGenerationError.emptyMessageContent(errorContext)
 		}
 
-		switch content {
-		case let .OutputTextContent(outputTextContent):
-			do {
-				let generatedContent = try GeneratedContent(json: outputTextContent.text)
-				let response = Transcript<Context>.Response(
-					id: message.id,
-					segments: [.structure(Transcript.StructuredSegment(content: generatedContent))],
-					status: transcriptStatusFromOpenAIStatus(message.status),
-				)
+		let combinedJSON = aggregatedFragments.joined()
 
-				AgentLog.outputStructured(json: outputTextContent.text, status: String(describing: message.status))
+		do {
+			let generatedContent = try GeneratedContent(json: combinedJSON)
+			let response = Transcript<Context>.Response(
+				id: message.id,
+				segments: [.structure(Transcript.StructuredSegment(content: generatedContent))],
+				status: status,
+			)
 
-				generatedTranscript.append(.response(response))
-				continuation.yield(.transcript(.response(response)))
-			} catch {
-				AgentLog.error(error, context: "structured_response_parsing")
-				let errorContext = AgentGenerationError.StructuredContentParsingFailedContext(
-					rawContent: outputTextContent.text,
-					underlyingError: error,
-				)
-				throw AgentGenerationError.structuredContentParsingFailed(errorContext)
-			}
-		case let .RefusalContent(refusalContent):
-			// TODO: Handle refusal content differently?
-			let errorContext = AgentGenerationError.ContentRefusalContext(expectedType: String(describing: type))
-			throw AgentGenerationError.contentRefusal(errorContext)
+			AgentLog.outputStructured(json: combinedJSON, status: String(describing: message.status))
+
+			generatedTranscript.append(.response(response))
+			continuation.yield(.transcript(.response(response)))
+		} catch {
+			AgentLog.error(error, context: "structured_response_parsing")
+			let errorContext = AgentGenerationError.StructuredContentParsingFailedContext(
+				rawContent: combinedJSON,
+				underlyingError: error,
+			)
+			throw AgentGenerationError.structuredContentParsingFailed(errorContext)
 		}
 	}
 
@@ -392,7 +459,7 @@ public final class OpenAIAdapter: AgentAdapter {
 				name: snakeCaseName(for: type),
 				schema: .dynamicJsonSchema(type.generationSchema),
 				description: nil,
-				strict: false
+				strict: false,
 			)
 
 			return CreateModelResponseQuery.TextResponseConfigurationOptions.jsonSchema(config)
@@ -422,13 +489,13 @@ public final class OpenAIAdapter: AgentAdapter {
 						name: tool.name,
 						description: tool.description,
 						parameters: tool.parameters.asJSONSchema(),
-						strict: false // GenerationSchema doesn't produce a compliant strict schema for OpenAI
-					)
+						strict: false, // GenerationSchema doesn't produce a compliant strict schema for OpenAI
+					),
 				)
 			},
 			topP: options.topP,
 			truncation: options.truncation,
-			user: options.safetyIdentifier
+			user: options.safetyIdentifier,
 		)
 	}
 
@@ -532,7 +599,7 @@ public final class OpenAIAdapter: AgentAdapter {
 			case let .prompt(prompt):
 				listItems.append(InputItem.inputMessage(EasyInputMessage(
 					role: .user,
-					content: .textInput(prompt.embeddedPrompt)
+					content: .textInput(prompt.embeddedPrompt),
 				)))
 			case let .reasoning(reasoning):
 				let item = Components.Schemas.ReasoningItem(
@@ -587,12 +654,18 @@ public final class OpenAIAdapter: AgentAdapter {
 									Components.Schemas.OutputTextContent(
 										_type: .outputText,
 										text: textSegment.content,
-										annotations: []
-									)
+										annotations: [],
+									),
 								)
-						case .structure:
-							// TODO: Add support
-							nil
+						case let .structure(structuredSegment):
+							Components.Schemas.OutputContent
+								.OutputTextContent(
+									Components.Schemas.OutputTextContent(
+										_type: .outputText,
+										text: structuredSegment.content.generatedContent.jsonString,
+										annotations: [],
+									),
+								)
 						}
 					},
 					status: transcriptStatusToMessageStatus(response.status),

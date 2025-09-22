@@ -3,15 +3,18 @@
 import Foundation
 import OpenAI
 
-
-// TODO: How to properly handle refusal content?
 extension Components.Schemas.OutputContent {
-	var asText: String {
+	enum ExtractedTextSegment {
+		case text(String)
+		case refusal(String)
+	}
+
+	var extractedTextSegment: ExtractedTextSegment? {
 		switch self {
 		case let .OutputTextContent(outputTextContent):
-			return outputTextContent.text
+			.text(outputTextContent.text)
 		case let .RefusalContent(refusalContent):
-			return refusalContent.refusal
+			.refusal(refusalContent.refusal)
 		}
 	}
 }
