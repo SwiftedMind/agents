@@ -8,8 +8,8 @@ SwiftAgent simplifies AI agent development by providing a clean, intuitive API t
 
 - **IMPORTANT**: Before starting to work on tasks, ALWAYS check if you should read a resource or guideline
 - **IMPORTANT**: When making changes to the code, ALWAYS build the project to check for compilation errors
-- **IMPORTANT**: When committing changes to the repository, always follow the commit guidelines
-- **IMPORTANT**: When writing to the CHANGELOG.md, always follow the changelog guidelines
+- **IMPORTANT**: When committing changes to the repository, always read and understand the commit guidelines before doing anything!
+- **IMPORTANT**: When updating the changelog, always read and understand the changelog guidelines before doing anything!
 - **IMPORTANT**: Whenever you are done with editing .swift files, ALWAYS run `swiftformat --config ".swiftformat" {file1} {file2} ...` at the end to format all the files you have written to!
 
 - Always follow the best practices of naming things in Swift
