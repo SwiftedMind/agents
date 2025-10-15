@@ -20,3 +20,6 @@
    - Confirm the state using `git status`.
 
 5. If `git status` still reports changes, repeat from Step 1 and create additional commits until the working directory is clean, amending when something needs correction.
+
+## General Notes
+- Do this with minimal exploration. Stop as soon as actionable context is sufficient. The commits do not have to contain every single detail.
